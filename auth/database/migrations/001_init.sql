@@ -1,0 +1,1 @@
+CREATE DATABASE apotekly_auth_db;
