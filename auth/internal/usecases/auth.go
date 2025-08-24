@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/ritchieridanko/apotekly-api/auth/config"
+	"github.com/ritchieridanko/apotekly-api/auth/internal/caches"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/constants"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/entities"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/repos"
@@ -13,20 +14,24 @@ import (
 	"github.com/ritchieridanko/apotekly-api/auth/pkg/dbtx"
 )
 
+// TODO (1): Send email verification
+
 const AuthErrorTracer = ce.AuthUsecaseTracer
 
 type AuthUsecase interface {
 	Register(ctx context.Context, data *entities.NewAuth, request *entities.NewRequest) (token *entities.AuthToken, err error)
+	Login(ctx context.Context, data *entities.GetAuth, request *entities.NewRequest) (token *entities.AuthToken, err error)
 }
 
 type authUsecase struct {
 	ar repos.AuthRepo
 	tx dbtx.TxManager
 	su SessionUsecase
+	cc caches.Cache
 }
 
-func NewAuthUsecase(ar repos.AuthRepo, tx dbtx.TxManager, su SessionUsecase) AuthUsecase {
-	return &authUsecase{ar, tx, su}
+func NewAuthUsecase(ar repos.AuthRepo, tx dbtx.TxManager, su SessionUsecase, cc caches.Cache) AuthUsecase {
+	return &authUsecase{ar, tx, su, cc}
 }
 
 func (u *authUsecase) Register(ctx context.Context, data *entities.NewAuth, request *entities.NewRequest) (*entities.AuthToken, error) {
@@ -34,20 +39,21 @@ func (u *authUsecase) Register(ctx context.Context, data *entities.NewAuth, requ
 	currentTime := time.Now().UTC()
 	sessionDuration := time.Duration(config.GetSessionDuration()) * time.Minute
 
-	result, err := u.tx.ReturnAnyAndError(ctx, func(ctx context.Context) (any, error) {
+	var token entities.AuthToken
+	err := u.tx.ReturnError(ctx, func(ctx context.Context) error {
 		normalizedEmail := utils.NormalizeString(data.Email)
 
 		exists, err := u.ar.IsEmailRegistered(ctx, normalizedEmail)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if exists {
-			return nil, ce.NewError(ce.ErrCodeConflict, ce.ErrMsgEmailRegistered, tracer, ce.ErrEmailAlreadyRegistered)
+			return ce.NewError(ce.ErrCodeConflict, ce.ErrMsgEmailRegistered, tracer, ce.ErrEmailAlreadyRegistered)
 		}
 
 		hashedPassword, err := utils.HashPassword(data.Password)
 		if err != nil {
-			return nil, ce.NewError(ce.ErrCodePassHashing, ce.ErrMsgInternalServer, tracer, err)
+			return ce.NewError(ce.ErrCodePassHashing, ce.ErrMsgInternalServer, tracer, err)
 		}
 
 		newData := entities.NewAuth{
@@ -58,13 +64,13 @@ func (u *authUsecase) Register(ctx context.Context, data *entities.NewAuth, requ
 
 		authID, err := u.ar.Create(ctx, &newData)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		sessionToken := utils.GenerateRandomToken()
-		accessToken, err := utils.GenerateJWTToken(authID, data.Role, false)
+		accessToken, err := utils.GenerateJWTToken(authID, newData.Role, false)
 		if err != nil {
-			return nil, ce.NewError(ce.ErrCodeToken, ce.ErrMsgInternalServer, tracer, err)
+			return ce.NewError(ce.ErrCodeToken, ce.ErrMsgInternalServer, tracer, err)
 		}
 
 		sessionData := entities.NewSession{
@@ -76,23 +82,87 @@ func (u *authUsecase) Register(ctx context.Context, data *entities.NewAuth, requ
 		}
 
 		if err := u.su.NewSessionOnRegister(ctx, &sessionData); err != nil {
-			return nil, err
+			return err
 		}
 
-		token := entities.AuthToken{
+		token = entities.AuthToken{
 			AccessToken:  accessToken,
 			SessionToken: sessionToken,
 		}
 
-		return token, nil
+		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	token, ok := result.(entities.AuthToken)
-	if !ok {
-		return nil, ce.NewError(ce.ErrCodeInvalidType, ce.ErrMsgInternalServer, tracer, ce.ErrInvalidType)
+	// TODO (1): Send email verification
+
+	return &token, nil
+}
+
+func (u *authUsecase) Login(ctx context.Context, data *entities.GetAuth, request *entities.NewRequest) (*entities.AuthToken, error) {
+	tracer := AuthErrorTracer + ": Login()"
+	currentTime := time.Now().UTC()
+	sessionDuration := time.Duration(config.GetSessionDuration()) * time.Minute
+	lockDuration := time.Duration(config.GetAuthLockDuration()) * time.Minute
+
+	normalizedEmail := utils.NormalizeString(data.Email)
+	auth, err := u.ar.GetByEmail(ctx, normalizedEmail)
+	if err != nil {
+		return nil, err
+	}
+	if auth.Password == nil {
+		return nil, ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgInvalidCredentials, tracer, ce.ErrOAuthRegularLogin)
+	}
+	if auth.LockedUntil != nil && auth.LockedUntil.After(currentTime) {
+		return nil, ce.NewError(ce.ErrCodeLocked, ce.ErrMsgAccountLocked, tracer, ce.ErrAccountLocked)
+	}
+
+	totalFailedAuthKey := utils.GenerateDynamicRedisKey(constants.RedisKeyTotalFailedAuth, auth.ID)
+	if err := utils.ValidatePassword(*auth.Password, data.Password); err != nil {
+		shouldBeLocked, err := u.cc.ShouldAccountBeLocked(ctx, totalFailedAuthKey)
+		if err != nil {
+			return nil, ce.NewError(ce.ErrCodeCache, ce.ErrMsgInternalServer, tracer, err)
+		}
+		if shouldBeLocked {
+			if err := u.ar.LockAccount(ctx, auth.ID, currentTime.Add(lockDuration)); err != nil {
+				return nil, err
+			}
+			if err := u.cc.Del(ctx, totalFailedAuthKey); err != nil {
+				return nil, ce.NewError(ce.ErrCodeCache, ce.ErrMsgInternalServer, tracer, err)
+			}
+			return nil, ce.NewError(ce.ErrCodeLocked, ce.ErrMsgAccountLocked, tracer, ce.ErrAccountLocked)
+		}
+		return nil, ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgInvalidCredentials, tracer, err)
+	}
+
+	if err := u.cc.Del(ctx, totalFailedAuthKey); err != nil {
+		return nil, ce.NewError(ce.ErrCodeCache, ce.ErrMsgInternalServer, tracer, err)
+	}
+
+	sessionToken := utils.GenerateRandomToken()
+	accessToken, err := utils.GenerateJWTToken(auth.ID, auth.Role, auth.IsVerified)
+	if err != nil {
+		return nil, ce.NewError(ce.ErrCodeToken, ce.ErrMsgInternalServer, tracer, err)
+	}
+
+	sessionData := entities.NewSession{
+		AuthID:    auth.ID,
+		Token:     sessionToken,
+		UserAgent: request.UserAgent,
+		IPAddress: request.IPAddress,
+		ExpiresAt: currentTime.Add(sessionDuration),
+	}
+
+	_, err = u.su.NewSession(ctx, &sessionData)
+	if err != nil {
+		return nil, err
+	}
+
+	token := entities.AuthToken{
+		AccessToken:  accessToken,
+		SessionToken: sessionToken,
 	}
 
 	return &token, nil

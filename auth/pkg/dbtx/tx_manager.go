@@ -14,7 +14,7 @@ type txManager struct {
 	db *sql.DB
 }
 
-func New(db *sql.DB) TxManager {
+func NewTxManager(db *sql.DB) TxManager {
 	return &txManager{db}
 }
 

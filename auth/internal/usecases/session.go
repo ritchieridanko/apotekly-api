@@ -6,20 +6,66 @@ import (
 	"github.com/ritchieridanko/apotekly-api/auth/internal/entities"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/repos"
 	"github.com/ritchieridanko/apotekly-api/auth/pkg/ce"
+	"github.com/ritchieridanko/apotekly-api/auth/pkg/dbtx"
 )
 
 const SessionErrorTracer = ce.SessionUsecaseTracer
 
 type SessionUsecase interface {
+	NewSession(ctx context.Context, data *entities.NewSession) (sessionID int64, err error)
 	NewSessionOnRegister(ctx context.Context, data *entities.NewSession) (err error)
 }
 
 type sessionUsecase struct {
 	sr repos.SessionRepo
+	tx dbtx.TxManager
 }
 
-func NewSessionUsecase(sr repos.SessionRepo) SessionUsecase {
-	return &sessionUsecase{sr}
+func NewSessionUsecase(sr repos.SessionRepo, tx dbtx.TxManager) SessionUsecase {
+	return &sessionUsecase{sr, tx}
+}
+
+func (u *sessionUsecase) NewSession(ctx context.Context, data *entities.NewSession) (int64, error) {
+	var sessionID int64
+	err := u.tx.ReturnError(ctx, func(ctx context.Context) error {
+		hasAny, activeSessionID, err := u.sr.HasActiveSession(ctx, data.AuthID)
+		if err != nil {
+			return err
+		}
+		if hasAny {
+			if err := u.sr.RevokeByID(ctx, activeSessionID); err != nil {
+				return err
+			}
+
+			reissueData := entities.ReissueSession{
+				AuthID:    data.AuthID,
+				ParentID:  activeSessionID,
+				Token:     data.Token,
+				UserAgent: data.UserAgent,
+				IPAddress: data.IPAddress,
+				ExpiresAt: data.ExpiresAt.UTC(),
+			}
+
+			sessionID, err = u.sr.Reissue(ctx, &reissueData)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}
+
+		sessionID, err = u.sr.Create(ctx, data)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	return sessionID, nil
 }
 
 func (u *sessionUsecase) NewSessionOnRegister(ctx context.Context, data *entities.NewSession) error {

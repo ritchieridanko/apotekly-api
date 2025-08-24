@@ -1,12 +1,15 @@
 package config
 
 import (
+	"strings"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
 type authConfig struct {
 	bcryptCost                     int
 	jwtIssuer                      string
+	jwtAudiences                   []string
 	jwtSecret                      string
 	jwtDuration                    int
 	sessionDuration                int
@@ -21,6 +24,7 @@ func LoadAuthConfig() {
 	authCfg = &authConfig{
 		bcryptCost:                     GetNumberEnvWithFallback("BCRYPT_COST", bcrypt.DefaultCost),
 		jwtIssuer:                      GetEnv("JWT_ISSUER"),
+		jwtAudiences:                   strings.Split(GetEnv("JWT_AUDIENCES"), ","),
 		jwtSecret:                      GetEnv("JWT_SECRET"),
 		jwtDuration:                    GetNumberEnv("JWT_DURATION"),
 		sessionDuration:                GetNumberEnv("SESSION_DURATION"),
@@ -36,6 +40,10 @@ func GetBCryptCost() (cost int) {
 
 func GetJWTIssuer() (issuer string) {
 	return authCfg.jwtIssuer
+}
+
+func GetJWTAudiences() (audiences []string) {
+	return authCfg.jwtAudiences
 }
 
 func GetJWTSecret() (secret string) {

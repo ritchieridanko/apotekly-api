@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ritchieridanko/apotekly-api/auth/internal/constants"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/dtos"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/entities"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/usecases"
@@ -11,10 +12,13 @@ import (
 	"github.com/ritchieridanko/apotekly-api/auth/pkg/ce"
 )
 
+// TODO (1): Refresh session
+
 const AuthErrorTracer = ce.AuthHandlerTracer
 
 type AuthHandler interface {
 	Register(ctx *gin.Context)
+	Login(ctx *gin.Context)
 }
 
 type authHandler struct {
@@ -57,4 +61,46 @@ func (h *authHandler) Register(ctx *gin.Context) {
 
 	utils.SetSessionCookie(ctx, token.SessionToken)
 	utils.SetResponse(ctx, "registered successfully", response, http.StatusCreated)
+}
+
+func (h *authHandler) Login(ctx *gin.Context) {
+	tracer := AuthErrorTracer + ": Login()"
+
+	var payload dtos.ReqLogin
+	if err := ctx.ShouldBindJSON(&payload); err != nil {
+		err := ce.NewError(ce.ErrCodeInvalidPayload, ce.ErrMsgInvalidPayload, tracer, err)
+		ctx.Error(err)
+		return
+	}
+
+	data := entities.GetAuth{
+		Email:    payload.Email,
+		Password: payload.Password,
+	}
+
+	request := entities.NewRequest{
+		UserAgent: ctx.Request.UserAgent(),
+		IPAddress: ctx.ClientIP(),
+	}
+
+	var newToken *entities.AuthToken
+	token, err := ctx.Cookie(constants.CookieKeySessionToken)
+
+	if err == nil && token != "" {
+		// TODO (1): Refresh session
+	} else {
+		newToken, err = h.au.Login(ctx, &data, &request)
+	}
+
+	if err != nil {
+		ctx.Error(err)
+		return
+	}
+
+	response := dtos.RespAuth{
+		Token: newToken.AccessToken,
+	}
+
+	utils.SetSessionCookie(ctx, newToken.SessionToken)
+	utils.SetResponse(ctx, "logged in successfully", response, http.StatusOK)
 }

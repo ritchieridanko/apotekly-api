@@ -7,7 +7,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/ritchieridanko/apotekly-api/auth/config"
-	"github.com/ritchieridanko/apotekly-api/auth/internal/constants"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/entities"
 )
 
@@ -24,13 +23,9 @@ func GenerateJWTToken(authID int64, roleID int16, isVerified bool) (tokenString 
 		RoleID:     roleID,
 		IsVerified: isVerified,
 		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:  config.GetJWTIssuer(),
-			Subject: fmt.Sprintf("%d", authID),
-			Audience: jwt.ClaimStrings{
-				constants.AudienceAuthService,
-				constants.AudienceCartService,
-				constants.AudienceUserService,
-			},
+			Issuer:    config.GetJWTIssuer(),
+			Subject:   fmt.Sprintf("%d", authID),
+			Audience:  jwt.ClaimStrings(config.GetJWTAudiences()),
 			IssuedAt:  &jwt.NumericDate{Time: now},
 			ExpiresAt: &jwt.NumericDate{Time: expiresAt},
 		},

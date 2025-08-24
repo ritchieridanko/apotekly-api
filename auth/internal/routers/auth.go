@@ -7,6 +7,7 @@ import (
 
 func AuthRouters(h handlers.AuthHandler) func(*gin.RouterGroup) {
 	return func(rg *gin.RouterGroup) {
-		rg.POST("", h.Register)
+		rg.POST("/register", h.Register)
+		rg.POST("/login", h.Login)
 	}
 }

@@ -4,6 +4,8 @@ import (
 	"database/sql"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
+	"github.com/ritchieridanko/apotekly-api/auth/internal/caches"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/handlers"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/repos"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/routers"
@@ -11,14 +13,15 @@ import (
 	"github.com/ritchieridanko/apotekly-api/auth/pkg/dbtx"
 )
 
-func SetupDependencies(db *sql.DB) *gin.Engine {
+func SetupDependencies(db *sql.DB, redis *redis.Client) *gin.Engine {
 	sr := repos.NewSessionRepo(db)
 	ar := repos.NewAuthRepo(db)
 
-	txManager := dbtx.New(db)
+	txManager := dbtx.NewTxManager(db)
+	cache := caches.NewCache(redis)
 
-	su := usecases.NewSessionUsecase(sr)
-	au := usecases.NewAuthUsecase(ar, txManager, su)
+	su := usecases.NewSessionUsecase(sr, txManager)
+	au := usecases.NewAuthUsecase(ar, txManager, su, cache)
 
 	ah := handlers.NewAuthHandler(au)
 

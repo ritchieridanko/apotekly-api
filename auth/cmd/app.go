@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
+	"github.com/redis/go-redis/v9"
 	"github.com/ritchieridanko/apotekly-api/auth/config"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/di"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/infras"
@@ -23,6 +24,7 @@ type App struct {
 	router *gin.Engine
 	server *http.Server
 	db     *sql.DB
+	redis  *redis.Client
 }
 
 func (a *App) Run() {
@@ -30,12 +32,14 @@ func (a *App) Run() {
 	config.Initialize()
 
 	// Initialize database
-	db := infras.Initialize()
+	db, redis := infras.Initialize()
 	a.db = db
+	a.redis = redis
 	defer a.db.Close()
+	defer a.redis.Close()
 
 	// Initialize dependency injections
-	router := di.SetupDependencies(a.db)
+	router := di.SetupDependencies(a.db, a.redis)
 	a.router = router
 
 	// Initialize validators
