@@ -1,4 +1,4 @@
-package dtos
+package dto
 
 type ReqRegister struct {
 	Email    string `json:"email" binding:"required,email"`

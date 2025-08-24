@@ -10,7 +10,7 @@ import (
 	"github.com/ritchieridanko/apotekly-api/auth/config"
 )
 
-func NewConnection() (*sql.DB, error) {
+func NewConnection() (db *sql.DB, err error) {
 	host := config.GetDBHost()
 	port := config.GetDBPort()
 	user := config.GetDBUser()
@@ -31,7 +31,7 @@ func NewConnection() (*sql.DB, error) {
 		mode,
 	)
 
-	db, err := sql.Open("pgx", connUrl)
+	db, err = sql.Open("pgx", connUrl)
 	if err != nil {
 		return nil, err
 	}

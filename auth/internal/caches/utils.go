@@ -4,9 +4,13 @@ import (
 	"context"
 	"errors"
 	"time"
+
+	"github.com/ritchieridanko/apotekly-api/auth/pkg/ce"
 )
 
-func (c *cache) Del(ctx context.Context, keys ...string) (err error) {
+func (c *cache) Del(ctx context.Context, keys ...string) error {
+	tracer := CacheErrorTracer + ": Del()"
+
 	var lastErr error
 	for attempt := 0; attempt <= c.maxRetries; attempt++ {
 		err := c.client.Del(ctx, keys...).Err()
@@ -20,20 +24,21 @@ func (c *cache) Del(ctx context.Context, keys ...string) (err error) {
 		}
 
 		if err := backoffWait(ctx, c.baseDelay, attempt); err != nil {
-			return err
+			return ce.NewError(ce.ErrCodeCache, ce.ErrMsgInternalServer, tracer, err)
 		}
 	}
-	return lastErr
+
+	return ce.NewError(ce.ErrCodeCache, ce.ErrMsgInternalServer, tracer, lastErr)
 }
 
-func isRetryable(err error) bool {
+func isRetryable(err error) (isRetryable bool) {
 	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 		return false
 	}
 	return true
 }
 
-func backoffWait(ctx context.Context, baseDelay, attempt int) error {
+func backoffWait(ctx context.Context, baseDelay, attempt int) (err error) {
 	backoff := time.Duration(baseDelay) * (1 << attempt)
 	select {
 	case <-ctx.Done():

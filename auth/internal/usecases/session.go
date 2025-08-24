@@ -5,11 +5,8 @@ import (
 
 	"github.com/ritchieridanko/apotekly-api/auth/internal/entities"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/repos"
-	"github.com/ritchieridanko/apotekly-api/auth/pkg/ce"
 	"github.com/ritchieridanko/apotekly-api/auth/pkg/dbtx"
 )
-
-const SessionErrorTracer = ce.SessionUsecaseTracer
 
 type SessionUsecase interface {
 	NewSession(ctx context.Context, data *entities.NewSession) (sessionID int64, err error)

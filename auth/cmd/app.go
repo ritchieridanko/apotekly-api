@@ -31,7 +31,7 @@ func (a *App) Run() {
 	// Initialize .env configurations
 	config.Initialize()
 
-	// Initialize database
+	// Initialize database and redis
 	db, redis := infras.Initialize()
 	a.db = db
 	a.redis = redis
@@ -49,17 +49,17 @@ func (a *App) Run() {
 		}
 	}
 
-	// Create HTTP server
+	// Create an HTTP server
 	a.server = &http.Server{
 		Addr:    config.GetServerBaseURL(),
 		Handler: a.router,
 	}
 
-	// Start server
+	// Start the server
 	go func() {
 		log.Println("Starting server on", config.GetServerBaseURL())
 		if err := a.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalln("FATAL: Failed to start server:", err)
+			log.Fatalln("FATAL: failed to start server:", err)
 		}
 	}()
 

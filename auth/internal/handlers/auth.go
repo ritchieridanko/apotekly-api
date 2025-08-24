@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/constants"
-	"github.com/ritchieridanko/apotekly-api/auth/internal/dtos"
+	"github.com/ritchieridanko/apotekly-api/auth/internal/dto"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/entities"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/usecases"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/utils"
@@ -32,7 +32,7 @@ func NewAuthHandler(au usecases.AuthUsecase) AuthHandler {
 func (h *authHandler) Register(ctx *gin.Context) {
 	tracer := AuthErrorTracer + ": Register()"
 
-	var payload dtos.ReqRegister
+	var payload dto.ReqRegister
 	if err := ctx.ShouldBindJSON(&payload); err != nil {
 		err := ce.NewError(ce.ErrCodeInvalidPayload, ce.ErrMsgInvalidPayload, tracer, err)
 		ctx.Error(err)
@@ -55,7 +55,7 @@ func (h *authHandler) Register(ctx *gin.Context) {
 		return
 	}
 
-	response := dtos.RespAuth{
+	response := dto.RespAuth{
 		Token: token.AccessToken,
 	}
 
@@ -66,7 +66,7 @@ func (h *authHandler) Register(ctx *gin.Context) {
 func (h *authHandler) Login(ctx *gin.Context) {
 	tracer := AuthErrorTracer + ": Login()"
 
-	var payload dtos.ReqLogin
+	var payload dto.ReqLogin
 	if err := ctx.ShouldBindJSON(&payload); err != nil {
 		err := ce.NewError(ce.ErrCodeInvalidPayload, ce.ErrMsgInvalidPayload, tracer, err)
 		ctx.Error(err)
@@ -85,7 +85,6 @@ func (h *authHandler) Login(ctx *gin.Context) {
 
 	var newToken *entities.AuthToken
 	token, err := ctx.Cookie(constants.CookieKeySessionToken)
-
 	if err == nil && token != "" {
 		// TODO (1): Refresh session
 	} else {
@@ -97,7 +96,7 @@ func (h *authHandler) Login(ctx *gin.Context) {
 		return
 	}
 
-	response := dtos.RespAuth{
+	response := dto.RespAuth{
 		Token: newToken.AccessToken,
 	}
 

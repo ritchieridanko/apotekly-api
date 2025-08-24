@@ -15,10 +15,14 @@ const (
 	ErrCodeToken          int = 50003
 	ErrCodeInvalidType    int = 50004
 	ErrCodeCache          int = 50005
+	ErrCodeDBTX           int = 50006
 )
 
 // error tracers
 const (
+	CacheTracer string = "[CACHE(AUTH)]"
+	DBTXTracer  string = "[DBTX(AUTH)]"
+
 	AuthHandlerTracer    string = "[HANDLER/AUTH]"
 	AuthRepoTracer       string = "[REPO/AUTH]"
 	AuthUsecaseTracer    string = "[USECASE/AUTH]"

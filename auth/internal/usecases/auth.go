@@ -24,19 +24,20 @@ type AuthUsecase interface {
 }
 
 type authUsecase struct {
-	ar repos.AuthRepo
-	tx dbtx.TxManager
-	su SessionUsecase
-	cc caches.Cache
+	ar    repos.AuthRepo
+	tx    dbtx.TxManager
+	su    SessionUsecase
+	cache caches.Cache
 }
 
-func NewAuthUsecase(ar repos.AuthRepo, tx dbtx.TxManager, su SessionUsecase, cc caches.Cache) AuthUsecase {
-	return &authUsecase{ar, tx, su, cc}
+func NewAuthUsecase(ar repos.AuthRepo, tx dbtx.TxManager, su SessionUsecase, cache caches.Cache) AuthUsecase {
+	return &authUsecase{ar, tx, su, cache}
 }
 
 func (u *authUsecase) Register(ctx context.Context, data *entities.NewAuth, request *entities.NewRequest) (*entities.AuthToken, error) {
 	tracer := AuthErrorTracer + ": Register()"
-	currentTime := time.Now().UTC()
+
+	now := time.Now().UTC()
 	sessionDuration := time.Duration(config.GetSessionDuration()) * time.Minute
 
 	var token entities.AuthToken
@@ -78,7 +79,7 @@ func (u *authUsecase) Register(ctx context.Context, data *entities.NewAuth, requ
 			Token:     sessionToken,
 			UserAgent: request.UserAgent,
 			IPAddress: request.IPAddress,
-			ExpiresAt: currentTime.Add(sessionDuration),
+			ExpiresAt: now.Add(sessionDuration),
 		}
 
 		if err := u.su.NewSessionOnRegister(ctx, &sessionData); err != nil {
@@ -103,7 +104,8 @@ func (u *authUsecase) Register(ctx context.Context, data *entities.NewAuth, requ
 
 func (u *authUsecase) Login(ctx context.Context, data *entities.GetAuth, request *entities.NewRequest) (*entities.AuthToken, error) {
 	tracer := AuthErrorTracer + ": Login()"
-	currentTime := time.Now().UTC()
+
+	now := time.Now().UTC()
 	sessionDuration := time.Duration(config.GetSessionDuration()) * time.Minute
 	lockDuration := time.Duration(config.GetAuthLockDuration()) * time.Minute
 
@@ -115,30 +117,31 @@ func (u *authUsecase) Login(ctx context.Context, data *entities.GetAuth, request
 	if auth.Password == nil {
 		return nil, ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgInvalidCredentials, tracer, ce.ErrOAuthRegularLogin)
 	}
-	if auth.LockedUntil != nil && auth.LockedUntil.After(currentTime) {
+	if auth.LockedUntil != nil && auth.LockedUntil.After(now) {
 		return nil, ce.NewError(ce.ErrCodeLocked, ce.ErrMsgAccountLocked, tracer, ce.ErrAccountLocked)
 	}
 
 	totalFailedAuthKey := utils.GenerateDynamicRedisKey(constants.RedisKeyTotalFailedAuth, auth.ID)
 	if err := utils.ValidatePassword(*auth.Password, data.Password); err != nil {
-		shouldBeLocked, err := u.cc.ShouldAccountBeLocked(ctx, totalFailedAuthKey)
-		if err != nil {
-			return nil, ce.NewError(ce.ErrCodeCache, ce.ErrMsgInternalServer, tracer, err)
+		shouldBeLocked, cacheErr := u.cache.ShouldAccountBeLocked(ctx, totalFailedAuthKey)
+		if cacheErr != nil {
+			return nil, cacheErr
 		}
 		if shouldBeLocked {
-			if err := u.ar.LockAccount(ctx, auth.ID, currentTime.Add(lockDuration)); err != nil {
+			if err := u.ar.LockAccount(ctx, auth.ID, now.Add(lockDuration)); err != nil {
 				return nil, err
 			}
-			if err := u.cc.Del(ctx, totalFailedAuthKey); err != nil {
-				return nil, ce.NewError(ce.ErrCodeCache, ce.ErrMsgInternalServer, tracer, err)
+			if err := u.cache.Del(ctx, totalFailedAuthKey); err != nil {
+				return nil, err
 			}
 			return nil, ce.NewError(ce.ErrCodeLocked, ce.ErrMsgAccountLocked, tracer, ce.ErrAccountLocked)
 		}
+
 		return nil, ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgInvalidCredentials, tracer, err)
 	}
 
-	if err := u.cc.Del(ctx, totalFailedAuthKey); err != nil {
-		return nil, ce.NewError(ce.ErrCodeCache, ce.ErrMsgInternalServer, tracer, err)
+	if err := u.cache.Del(ctx, totalFailedAuthKey); err != nil {
+		return nil, err
 	}
 
 	sessionToken := utils.GenerateRandomToken()
@@ -152,7 +155,7 @@ func (u *authUsecase) Login(ctx context.Context, data *entities.GetAuth, request
 		Token:     sessionToken,
 		UserAgent: request.UserAgent,
 		IPAddress: request.IPAddress,
-		ExpiresAt: currentTime.Add(sessionDuration),
+		ExpiresAt: now.Add(sessionDuration),
 	}
 
 	_, err = u.su.NewSession(ctx, &sessionData)

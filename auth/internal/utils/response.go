@@ -2,11 +2,11 @@ package utils
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/ritchieridanko/apotekly-api/auth/internal/dtos"
+	"github.com/ritchieridanko/apotekly-api/auth/internal/dto"
 )
 
 func SetResponse(ctx *gin.Context, message string, data any, code int) {
-	response := dtos.Response{
+	response := dto.Response{
 		Message: message,
 		Data:    data,
 	}

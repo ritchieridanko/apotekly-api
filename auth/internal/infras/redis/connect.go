@@ -6,12 +6,12 @@ import (
 	"log"
 	"time"
 
-	"github.com/redis/go-redis/v9"
+	r "github.com/redis/go-redis/v9"
 	"github.com/ritchieridanko/apotekly-api/auth/config"
 )
 
-func NewConnection() (*redis.Client, error) {
-	client := redis.NewClient(&redis.Options{
+func NewConnection() (redis *r.Client, err error) {
+	client := r.NewClient(&r.Options{
 		Addr:     fmt.Sprintf("%s:%s", config.GetCacheHost(), config.GetCachePort()),
 		Password: config.GetCachePass(),
 	})

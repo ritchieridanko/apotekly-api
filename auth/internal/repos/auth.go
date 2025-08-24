@@ -40,12 +40,12 @@ func (r *authRepo) Create(ctx context.Context, data *entities.NewAuth) (int64, e
 	executor := dbtx.GetSQLExecutor(ctx, r.db)
 	row := executor.QueryRowContext(ctx, query, data.Email, data.Password, data.Role)
 
-	var id int64
-	if err := row.Scan(&id); err != nil {
+	var authID int64
+	if err := row.Scan(&authID); err != nil {
 		return 0, ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
 	}
 
-	return id, nil
+	return authID, nil
 }
 
 func (r *authRepo) GetByEmail(ctx context.Context, email string) (*entities.Auth, error) {

@@ -5,9 +5,12 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/constants"
+	"github.com/ritchieridanko/apotekly-api/auth/pkg/ce"
 )
 
 func (c *cache) ShouldAccountBeLocked(ctx context.Context, key string) (bool, error) {
+	tracer := CacheErrorTracer + ": ShouldAccountBeLocked()"
+
 	script := redis.NewScript(`
 		local count = redis.call("INCR", KEYS[1])
 		if count == 1 then
@@ -19,15 +22,9 @@ func (c *cache) ShouldAccountBeLocked(ctx context.Context, key string) (bool, er
 		return 0
 	`)
 
-	result, err := script.Run(
-		ctx,
-		c.client,
-		[]string{key},
-		constants.MaxTotalFailedAuth,
-		constants.RedisDurationTotalFailedAuth,
-	).Int()
+	result, err := script.Run(ctx, c.client, []string{key}, constants.MaxTotalFailedAuth, constants.RedisDurationTotalFailedAuth).Int()
 	if err != nil {
-		return false, err
+		return false, ce.NewError(ce.ErrCodeCache, ce.ErrMsgInternalServer, tracer, err)
 	}
 
 	return result == 1, nil

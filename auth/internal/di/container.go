@@ -13,7 +13,7 @@ import (
 	"github.com/ritchieridanko/apotekly-api/auth/pkg/dbtx"
 )
 
-func SetupDependencies(db *sql.DB, redis *redis.Client) *gin.Engine {
+func SetupDependencies(db *sql.DB, redis *redis.Client) (router *gin.Engine) {
 	sr := repos.NewSessionRepo(db)
 	ar := repos.NewAuthRepo(db)
 

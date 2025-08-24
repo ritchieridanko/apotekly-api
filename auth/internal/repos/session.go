@@ -40,12 +40,12 @@ func (r *sessionRepo) Create(ctx context.Context, data *entities.NewSession) (in
 	executor := dbtx.GetSQLExecutor(ctx, r.db)
 	row := executor.QueryRowContext(ctx, query, data.AuthID, data.Token, data.UserAgent, data.IPAddress, data.ExpiresAt)
 
-	var id int64
-	if err := row.Scan(&id); err != nil {
+	var sessionID int64
+	if err := row.Scan(&sessionID); err != nil {
 		return 0, ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
 	}
 
-	return id, nil
+	return sessionID, nil
 }
 
 func (r *sessionRepo) Reissue(ctx context.Context, data *entities.ReissueSession) (int64, error) {
@@ -58,23 +58,14 @@ func (r *sessionRepo) Reissue(ctx context.Context, data *entities.ReissueSession
 	`
 
 	executor := dbtx.GetSQLExecutor(ctx, r.db)
-	row := executor.QueryRowContext(
-		ctx,
-		query,
-		data.AuthID,
-		data.ParentID,
-		data.Token,
-		data.UserAgent,
-		data.IPAddress,
-		data.ExpiresAt,
-	)
+	row := executor.QueryRowContext(ctx, query, data.AuthID, data.ParentID, data.Token, data.UserAgent, data.IPAddress, data.ExpiresAt)
 
-	var id int64
-	if err := row.Scan(&id); err != nil {
+	var newSessionID int64
+	if err := row.Scan(&newSessionID); err != nil {
 		return 0, ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
 	}
 
-	return id, nil
+	return newSessionID, nil
 }
 
 func (r *sessionRepo) RevokeByID(ctx context.Context, sessionID int64) error {
@@ -119,14 +110,14 @@ func (r *sessionRepo) HasActiveSession(ctx context.Context, authID int64) (bool,
 	executor := dbtx.GetSQLExecutor(ctx, r.db)
 	row := executor.QueryRowContext(ctx, query, authID)
 
-	var id int64
+	var sessionID int64
 	var expiresAt time.Time
-	if err := row.Scan(&id, &expiresAt); err != nil {
+	if err := row.Scan(&sessionID, &expiresAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return false, 0, nil
 		}
 		return false, 0, ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
 	}
 
-	return expiresAt.After(time.Now().UTC()), id, nil
+	return expiresAt.After(time.Now().UTC()), sessionID, nil
 }

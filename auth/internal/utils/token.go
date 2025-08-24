@@ -14,9 +14,9 @@ func GenerateRandomToken() (token string) {
 	return uuid.New().String()
 }
 
-func GenerateJWTToken(authID int64, roleID int16, isVerified bool) (tokenString string, err error) {
+func GenerateJWTToken(authID int64, roleID int16, isVerified bool) (jwtToken string, err error) {
 	now := time.Now().UTC()
-	expiresAt := now.Add(time.Duration(config.GetJWTDuration()) * time.Minute)
+	jwtDuration := time.Duration(config.GetJWTDuration()) * time.Minute
 
 	claim := entities.Claim{
 		AuthID:     authID,
@@ -27,15 +27,15 @@ func GenerateJWTToken(authID int64, roleID int16, isVerified bool) (tokenString 
 			Subject:   fmt.Sprintf("%d", authID),
 			Audience:  jwt.ClaimStrings(config.GetJWTAudiences()),
 			IssuedAt:  &jwt.NumericDate{Time: now},
-			ExpiresAt: &jwt.NumericDate{Time: expiresAt},
+			ExpiresAt: &jwt.NumericDate{Time: now.Add(jwtDuration)},
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claim)
 
-	tokenString, err = token.SignedString([]byte(config.GetJWTSecret()))
+	jwtToken, err = token.SignedString([]byte(config.GetJWTSecret()))
 	if err != nil {
 		return "", err
 	}
 
-	return tokenString, nil
+	return jwtToken, nil
 }

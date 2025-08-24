@@ -3,7 +3,11 @@ package dbtx
 import (
 	"context"
 	"database/sql"
+
+	"github.com/ritchieridanko/apotekly-api/auth/pkg/ce"
 )
+
+const DBTXErrorTracer = ce.DBTXTracer
 
 type TxManager interface {
 	ReturnError(ctx context.Context, fn func(ctx context.Context) (err error)) (err error)
@@ -19,6 +23,8 @@ func NewTxManager(db *sql.DB) TxManager {
 }
 
 func (m *txManager) ReturnError(ctx context.Context, fn func(ctx context.Context) error) error {
+	tracer := DBTXErrorTracer + ": ReturnError()"
+
 	tx := GetTxFromContext(ctx)
 	isNewTx := false
 
@@ -26,7 +32,7 @@ func (m *txManager) ReturnError(ctx context.Context, fn func(ctx context.Context
 	if tx == nil {
 		tx, err = m.db.BeginTx(ctx, nil)
 		if err != nil {
-			return err
+			return ce.NewError(ce.ErrCodeDBTX, ce.ErrMsgInternalServer, tracer, err)
 		}
 		ctx = WithTxContext(ctx, tx)
 		isNewTx = true
@@ -41,7 +47,7 @@ func (m *txManager) ReturnError(ctx context.Context, fn func(ctx context.Context
 
 	if isNewTx {
 		if err := tx.Commit(); err != nil {
-			return err
+			return ce.NewError(ce.ErrCodeDBTX, ce.ErrMsgInternalServer, tracer, err)
 		}
 	}
 
@@ -49,6 +55,8 @@ func (m *txManager) ReturnError(ctx context.Context, fn func(ctx context.Context
 }
 
 func (m *txManager) ReturnAnyAndError(ctx context.Context, fn func(ctx context.Context) (any, error)) (any, error) {
+	tracer := DBTXErrorTracer + ": ReturnAnyAndError()"
+
 	tx := GetTxFromContext(ctx)
 	isNewTx := false
 
@@ -56,7 +64,7 @@ func (m *txManager) ReturnAnyAndError(ctx context.Context, fn func(ctx context.C
 	if tx == nil {
 		tx, err = m.db.BeginTx(ctx, nil)
 		if err != nil {
-			return nil, err
+			return nil, ce.NewError(ce.ErrCodeDBTX, ce.ErrMsgInternalServer, tracer, err)
 		}
 		ctx = WithTxContext(ctx, tx)
 		isNewTx = true
@@ -72,7 +80,7 @@ func (m *txManager) ReturnAnyAndError(ctx context.Context, fn func(ctx context.C
 
 	if isNewTx {
 		if err := tx.Commit(); err != nil {
-			return nil, err
+			return nil, ce.NewError(ce.ErrCodeDBTX, ce.ErrMsgInternalServer, tracer, err)
 		}
 	}
 
