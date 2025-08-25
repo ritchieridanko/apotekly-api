@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ritchieridanko/apotekly-api/auth/internal/middlewares"
 )
 
 func Initialize(auth func(*gin.RouterGroup)) *gin.Engine {
@@ -11,6 +12,8 @@ func Initialize(auth func(*gin.RouterGroup)) *gin.Engine {
 
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
+	router.Use(middlewares.ErrorHandler())
+
 	router.ContextWithFallback = true
 
 	api := router.Group("/api/v1")

@@ -12,3 +12,10 @@ func SetResponse(ctx *gin.Context, message string, data any, code int) {
 	}
 	ctx.JSON(code, &response)
 }
+
+func SetErrorResponse(ctx *gin.Context, message string, code int) {
+	response := dto.Response{
+		Message: message,
+	}
+	ctx.AbortWithStatusJSON(code, &response)
+}
