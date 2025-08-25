@@ -21,6 +21,7 @@ type AuthHandler interface {
 	Logout(ctx *gin.Context)
 	ChangeEmail(ctx *gin.Context)
 	ChangePassword(ctx *gin.Context)
+	IsEmailRegistered(ctx *gin.Context)
 	RefreshSession(ctx *gin.Context)
 }
 
@@ -192,6 +193,29 @@ func (h *authHandler) ChangePassword(ctx *gin.Context) {
 	}
 
 	utils.SetResponse(ctx, "password changed successfully", nil, http.StatusNoContent)
+}
+
+func (h *authHandler) IsEmailRegistered(ctx *gin.Context) {
+	tracer := AuthErrorTracer + ": IsEmailRegistered()"
+
+	var params dto.ReqEmailCheckQuery
+	if err := ctx.ShouldBindQuery(&params); err != nil {
+		err := ce.NewError(ce.ErrCodeInvalidParams, ce.ErrMsgInvalidParams, tracer, err)
+		ctx.Error(err)
+		return
+	}
+
+	isRegistered, err := h.au.IsEmailRegistered(ctx, params.Email)
+	if err != nil {
+		ctx.Error(err)
+		return
+	}
+
+	response := dto.RespEmailCheckQuery{
+		IsRegistered: isRegistered,
+	}
+
+	utils.SetResponse(ctx, "ok", response, http.StatusOK)
 }
 
 func (h *authHandler) RefreshSession(ctx *gin.Context) {

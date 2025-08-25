@@ -41,6 +41,7 @@ const (
 	ErrMsgEmailNotVerified    string = "email not verified"
 	ErrMsgInternalServer      string = "internal server error"
 	ErrMsgInvalidCredentials  string = "invalid credentials"
+	ErrMsgInvalidParams       string = "invalid params"
 	ErrMsgInvalidPassword     string = "invalid password"
 	ErrMsgInvalidPayload      string = "invalid payload"
 	ErrMsgOAuthEmailChange    string = "oauth-linked accounts cannot change email"

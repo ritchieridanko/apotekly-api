@@ -8,6 +8,8 @@ import (
 
 func AuthRouters(h handlers.AuthHandler) func(*gin.RouterGroup) {
 	return func(rg *gin.RouterGroup) {
+		rg.GET("/email/available", h.IsEmailRegistered)
+
 		rg.POST("/register", h.Register)
 		rg.POST("/login", h.Login)
 		rg.POST("/logout", middlewares.Authenticate(), h.Logout)
