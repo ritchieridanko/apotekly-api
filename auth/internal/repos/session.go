@@ -16,6 +16,7 @@ const SessionErrorTracer = ce.SessionRepoTracer
 type SessionRepo interface {
 	Create(ctx context.Context, data *entities.NewSession) (sessionID int64, err error)
 	Reissue(ctx context.Context, data *entities.ReissueSession) (newSessionID int64, err error)
+	GetByToken(ctx context.Context, token string) (session *entities.Session, err error)
 	RevokeByID(ctx context.Context, sessionID int64) (err error)
 	HasActiveSession(ctx context.Context, authID int64) (hasAny bool, sessionID int64, err error)
 }
@@ -66,6 +67,44 @@ func (r *sessionRepo) Reissue(ctx context.Context, data *entities.ReissueSession
 	}
 
 	return newSessionID, nil
+}
+
+func (r *sessionRepo) GetByToken(ctx context.Context, token string) (*entities.Session, error) {
+	tracer := SessionErrorTracer + ": GetByToken()"
+
+	query := `
+		SELECT id, auth_id, parent_id, token, user_agent, ip_address, created_at, expires_at, revoked_at
+		FROM sessions
+		WHERE token = $1
+	`
+
+	if dbtx.IsInsideTx(ctx) {
+		query += " FOR UPDATE"
+	}
+
+	executor := dbtx.GetSQLExecutor(ctx, r.db)
+	row := executor.QueryRowContext(ctx, query, token)
+
+	var session entities.Session
+	err := row.Scan(
+		&session.ID,
+		&session.AuthID,
+		&session.ParentID,
+		&session.Token,
+		&session.UserAgent,
+		&session.IPAddress,
+		&session.CreatedAt,
+		&session.ExpiresAt,
+		&session.RevokedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgInvalidCredentials, tracer, err)
+		}
+		return nil, ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
+	}
+
+	return &session, nil
 }
 
 func (r *sessionRepo) RevokeByID(ctx context.Context, sessionID int64) error {

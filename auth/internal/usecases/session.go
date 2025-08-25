@@ -11,6 +11,8 @@ import (
 type SessionUsecase interface {
 	NewSession(ctx context.Context, data *entities.NewSession) (sessionID int64, err error)
 	NewSessionOnRegister(ctx context.Context, data *entities.NewSession) (err error)
+	RenewSession(ctx context.Context, data *entities.ReissueSession) (newSessionID int64, err error)
+	GetSession(ctx context.Context, token string) (session *entities.Session, err error)
 }
 
 type sessionUsecase struct {
@@ -68,4 +70,30 @@ func (u *sessionUsecase) NewSession(ctx context.Context, data *entities.NewSessi
 func (u *sessionUsecase) NewSessionOnRegister(ctx context.Context, data *entities.NewSession) error {
 	_, err := u.sr.Create(ctx, data)
 	return err
+}
+
+func (u *sessionUsecase) RenewSession(ctx context.Context, data *entities.ReissueSession) (int64, error) {
+	var newSessionID int64
+	err := u.tx.ReturnError(ctx, func(ctx context.Context) error {
+		err := u.sr.RevokeByID(ctx, data.ParentID)
+		if err != nil {
+			return err
+		}
+
+		newSessionID, err = u.sr.Reissue(ctx, data)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	return newSessionID, nil
+}
+
+func (u *sessionUsecase) GetSession(ctx context.Context, token string) (*entities.Session, error) {
+	return u.sr.GetByToken(ctx, token)
 }

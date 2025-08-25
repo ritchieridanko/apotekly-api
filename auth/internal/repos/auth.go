@@ -16,6 +16,7 @@ const AuthErrorTracer = ce.AuthRepoTracer
 type AuthRepo interface {
 	Create(ctx context.Context, data *entities.NewAuth) (authID int64, err error)
 	GetByEmail(ctx context.Context, email string) (auth *entities.Auth, err error)
+	GetByID(ctx context.Context, authID int64) (auth *entities.Auth, err error)
 	IsEmailRegistered(ctx context.Context, email string) (exists bool, err error)
 	LockAccount(ctx context.Context, authID int64, until time.Time) (err error)
 }
@@ -63,6 +64,33 @@ func (r *authRepo) GetByEmail(ctx context.Context, email string) (*entities.Auth
 
 	executor := dbtx.GetSQLExecutor(ctx, r.db)
 	row := executor.QueryRowContext(ctx, query, email)
+
+	var auth entities.Auth
+	if err := row.Scan(&auth.ID, &auth.Email, &auth.Password, &auth.IsVerified, &auth.LockedUntil, &auth.Role); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgInvalidCredentials, tracer, err)
+		}
+		return nil, ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
+	}
+
+	return &auth, nil
+}
+
+func (r *authRepo) GetByID(ctx context.Context, authID int64) (*entities.Auth, error) {
+	tracer := AuthErrorTracer + ": GetByID()"
+
+	query := `
+		SELECT id, email, password, is_verified, locked_until, role
+		FROM auth
+		WHERE id = $1 AND deleted_at IS NULL
+	`
+
+	if dbtx.IsInsideTx(ctx) {
+		query += " FOR UPDATE"
+	}
+
+	executor := dbtx.GetSQLExecutor(ctx, r.db)
+	row := executor.QueryRowContext(ctx, query, authID)
 
 	var auth entities.Auth
 	if err := row.Scan(&auth.ID, &auth.Email, &auth.Password, &auth.IsVerified, &auth.LockedUntil, &auth.Role); err != nil {

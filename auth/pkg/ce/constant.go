@@ -16,6 +16,7 @@ const (
 	ErrCodeInvalidType    int = 50004
 	ErrCodeCache          int = 50005
 	ErrCodeDBTX           int = 50006
+	ErrCodeContext        int = 50007
 )
 
 // error tracers
@@ -37,6 +38,7 @@ const (
 	ErrMsgInternalServer     string = "internal server error"
 	ErrMsgInvalidCredentials string = "invalid credentials"
 	ErrMsgInvalidPayload     string = "invalid payload"
+	ErrMsgUnauthenticated    string = "unauthenticated"
 )
 
 // internal error loggers
@@ -46,4 +48,7 @@ var (
 	ErrEmailAlreadyRegistered error = fmt.Errorf("email already registered")
 	ErrInvalidType            error = fmt.Errorf("invalid return type")
 	ErrOAuthRegularLogin      error = fmt.Errorf("regular auth attempted to authenticate by oauth")
+	ErrSessionExpired         error = fmt.Errorf("session has expired")
+	ErrSessionRevoked         error = fmt.Errorf("session has been revoked")
+	ErrTokenEmpty             error = fmt.Errorf("token empty")
 )

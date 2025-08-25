@@ -21,6 +21,7 @@ const AuthErrorTracer = ce.AuthUsecaseTracer
 type AuthUsecase interface {
 	Register(ctx context.Context, data *entities.NewAuth, request *entities.NewRequest) (token *entities.AuthToken, err error)
 	Login(ctx context.Context, data *entities.GetAuth, request *entities.NewRequest) (token *entities.AuthToken, err error)
+	RefreshSession(ctx context.Context, sessionToken string) (token *entities.AuthToken, err error)
 }
 
 type authUsecase struct {
@@ -166,6 +167,64 @@ func (u *authUsecase) Login(ctx context.Context, data *entities.GetAuth, request
 	token := entities.AuthToken{
 		AccessToken:  accessToken,
 		SessionToken: sessionToken,
+	}
+
+	return &token, nil
+}
+
+func (u *authUsecase) RefreshSession(ctx context.Context, sessionToken string) (*entities.AuthToken, error) {
+	tracer := AuthErrorTracer + ": RefreshSession()"
+
+	now := time.Now().UTC()
+	sessionDuration := time.Duration(config.GetSessionDuration()) * time.Minute
+
+	var token entities.AuthToken
+	err := u.tx.ReturnError(ctx, func(ctx context.Context) error {
+		session, err := u.su.GetSession(ctx, sessionToken)
+		if err != nil {
+			return err
+		}
+		if !session.ExpiresAt.After(now) {
+			return ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgInvalidCredentials, tracer, ce.ErrSessionExpired)
+		}
+		if session.RevokedAt != nil {
+			return ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgInvalidCredentials, tracer, ce.ErrSessionRevoked)
+		}
+
+		auth, err := u.ar.GetByID(ctx, session.AuthID)
+		if err != nil {
+			return err
+		}
+
+		newSessionToken := utils.GenerateRandomToken()
+		newAccessToken, err := utils.GenerateJWTToken(auth.ID, auth.Role, auth.IsVerified)
+		if err != nil {
+			return ce.NewError(ce.ErrCodeToken, ce.ErrMsgInternalServer, tracer, err)
+		}
+
+		newSessionData := entities.ReissueSession{
+			AuthID:    auth.ID,
+			ParentID:  session.ID,
+			Token:     newSessionToken,
+			UserAgent: session.UserAgent,
+			IPAddress: session.IPAddress,
+			ExpiresAt: now.Add(sessionDuration),
+		}
+
+		_, err = u.su.RenewSession(ctx, &newSessionData)
+		if err != nil {
+			return err
+		}
+
+		token = entities.AuthToken{
+			AccessToken:  newAccessToken,
+			SessionToken: newSessionToken,
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return &token, nil

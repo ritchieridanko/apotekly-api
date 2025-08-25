@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -12,13 +13,12 @@ import (
 	"github.com/ritchieridanko/apotekly-api/auth/pkg/ce"
 )
 
-// TODO (1): Refresh session
-
 const AuthErrorTracer = ce.AuthHandlerTracer
 
 type AuthHandler interface {
 	Register(ctx *gin.Context)
 	Login(ctx *gin.Context)
+	RefreshSession(ctx *gin.Context)
 }
 
 type authHandler struct {
@@ -86,7 +86,10 @@ func (h *authHandler) Login(ctx *gin.Context) {
 	var newToken *entities.AuthToken
 	token, err := ctx.Cookie(constants.CookieKeySessionToken)
 	if err == nil && token != "" {
-		// TODO (1): Refresh session
+		newToken, err = h.au.RefreshSession(ctx, token)
+		if err != nil {
+			newToken, err = h.au.Login(ctx, &data, &request)
+		}
 	} else {
 		newToken, err = h.au.Login(ctx, &data, &request)
 	}
@@ -102,4 +105,38 @@ func (h *authHandler) Login(ctx *gin.Context) {
 
 	utils.SetSessionCookie(ctx, newToken.SessionToken)
 	utils.SetResponse(ctx, "logged in successfully", response, http.StatusOK)
+}
+
+func (h *authHandler) RefreshSession(ctx *gin.Context) {
+	tracer := AuthErrorTracer + ": RefreshSession()"
+
+	token, err := ctx.Cookie(constants.CookieKeySessionToken)
+	if errors.Is(err, http.ErrNoCookie) {
+		err := ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgUnauthenticated, tracer, err)
+		ctx.Error(err)
+		return
+	}
+	if err != nil {
+		err := ce.NewError(ce.ErrCodeContext, ce.ErrMsgInternalServer, tracer, err)
+		ctx.Error(err)
+		return
+	}
+	if token == "" {
+		err := ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgUnauthenticated, tracer, ce.ErrTokenEmpty)
+		ctx.Error(err)
+		return
+	}
+
+	newToken, err := h.au.RefreshSession(ctx, token)
+	if err != nil {
+		ctx.Error(err)
+		return
+	}
+
+	response := dto.RespAuth{
+		Token: newToken.AccessToken,
+	}
+
+	utils.SetSessionCookie(ctx, newToken.SessionToken)
+	utils.SetResponse(ctx, "session refreshed successfully", response, http.StatusOK)
 }
