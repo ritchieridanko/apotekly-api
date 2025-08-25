@@ -62,3 +62,19 @@ func Authenticate() gin.HandlerFunc {
 		ctx.Next()
 	}
 }
+
+func RequireVerified() gin.HandlerFunc {
+	tracer := AuthErrorTracer + ": RequireVerified()"
+
+	return func(ctx *gin.Context) {
+		value, exists := ctx.Get(constants.RequestKeyIsVerified)
+		if !exists || !value.(bool) {
+			err := ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgEmailNotVerified, tracer, ce.ErrEmailVerificationRequired)
+			ctx.Error(err)
+			ctx.Abort()
+			return
+		}
+
+		ctx.Next()
+	}
+}

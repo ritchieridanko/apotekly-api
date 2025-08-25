@@ -38,6 +38,7 @@ const (
 const (
 	ErrMsgAccountLocked       string = "account locked"
 	ErrMsgEmailRegistered     string = "email already registered"
+	ErrMsgEmailNotVerified    string = "email not verified"
 	ErrMsgInternalServer      string = "internal server error"
 	ErrMsgInvalidCredentials  string = "invalid credentials"
 	ErrMsgInvalidPassword     string = "invalid password"
@@ -49,16 +50,17 @@ const (
 
 // internal error loggers
 var (
-	ErrAccountLocked          error = fmt.Errorf("failed authentication multiple times, account locked")
-	ErrDBNoChange             error = fmt.Errorf("no rows affected after query execution")
-	ErrEmailAlreadyRegistered error = fmt.Errorf("email already registered")
-	ErrInvalidTokenFormat     error = fmt.Errorf("invalid token format")
-	ErrInvalidType            error = fmt.Errorf("invalid return type")
-	ErrOAuthEmailChange       error = fmt.Errorf("oauth-linked account attempted to change email")
-	ErrOAuthPasswordChange    error = fmt.Errorf("oauth-linked account attempted to change password")
-	ErrOAuthRegularLogin      error = fmt.Errorf("regular auth attempted to authenticate by oauth")
-	ErrSessionExpired         error = fmt.Errorf("session has expired")
-	ErrSessionRevoked         error = fmt.Errorf("session has been revoked")
-	ErrTokenEmpty             error = fmt.Errorf("token empty")
-	ErrTokenNotFound          error = fmt.Errorf("token not found")
+	ErrAccountLocked             error = fmt.Errorf("failed authentication multiple times, account locked")
+	ErrDBNoChange                error = fmt.Errorf("no rows affected after query execution")
+	ErrEmailAlreadyRegistered    error = fmt.Errorf("email already registered")
+	ErrEmailVerificationRequired error = fmt.Errorf("email verification required")
+	ErrInvalidTokenFormat        error = fmt.Errorf("invalid token format")
+	ErrInvalidType               error = fmt.Errorf("invalid return type")
+	ErrOAuthEmailChange          error = fmt.Errorf("oauth-linked account attempted to change email")
+	ErrOAuthPasswordChange       error = fmt.Errorf("oauth-linked account attempted to change password")
+	ErrOAuthRegularLogin         error = fmt.Errorf("regular auth attempted to authenticate by oauth")
+	ErrSessionExpired            error = fmt.Errorf("session has expired")
+	ErrSessionRevoked            error = fmt.Errorf("session has been revoked")
+	ErrTokenEmpty                error = fmt.Errorf("token empty")
+	ErrTokenNotFound             error = fmt.Errorf("token not found")
 )
