@@ -17,6 +17,7 @@ const (
 	ErrCodeCache          int = 50005
 	ErrCodeDBTX           int = 50006
 	ErrCodeContext        int = 50007
+	ErrCodeParsing        int = 50008
 )
 
 // error tracers
@@ -25,6 +26,7 @@ const (
 	DBTXTracer  string = "[DBTX(AUTH)]"
 
 	AuthHandlerTracer    string = "[HANDLER/AUTH]"
+	AuthMiddlewareTracer string = "[MIDDLEWARE/AUTH]"
 	AuthRepoTracer       string = "[REPO/AUTH]"
 	AuthUsecaseTracer    string = "[USECASE/AUTH]"
 	SessionRepoTracer    string = "[REPO/SESSION]"
@@ -46,9 +48,11 @@ var (
 	ErrAccountLocked          error = fmt.Errorf("failed authentication multiple times, account locked")
 	ErrDBNoChange             error = fmt.Errorf("no rows affected after query execution")
 	ErrEmailAlreadyRegistered error = fmt.Errorf("email already registered")
+	ErrInvalidTokenFormat     error = fmt.Errorf("invalid token format")
 	ErrInvalidType            error = fmt.Errorf("invalid return type")
 	ErrOAuthRegularLogin      error = fmt.Errorf("regular auth attempted to authenticate by oauth")
 	ErrSessionExpired         error = fmt.Errorf("session has expired")
 	ErrSessionRevoked         error = fmt.Errorf("session has been revoked")
 	ErrTokenEmpty             error = fmt.Errorf("token empty")
+	ErrTokenNotFound          error = fmt.Errorf("token not found")
 )

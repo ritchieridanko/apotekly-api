@@ -13,6 +13,7 @@ type SessionUsecase interface {
 	NewSessionOnRegister(ctx context.Context, data *entities.NewSession) (err error)
 	RenewSession(ctx context.Context, data *entities.ReissueSession) (newSessionID int64, err error)
 	GetSession(ctx context.Context, token string) (session *entities.Session, err error)
+	RevokeSession(ctx context.Context, token string) (err error)
 }
 
 type sessionUsecase struct {
@@ -96,4 +97,8 @@ func (u *sessionUsecase) RenewSession(ctx context.Context, data *entities.Reissu
 
 func (u *sessionUsecase) GetSession(ctx context.Context, token string) (*entities.Session, error) {
 	return u.sr.GetByToken(ctx, token)
+}
+
+func (u *sessionUsecase) RevokeSession(ctx context.Context, token string) error {
+	return u.sr.RevokeByToken(ctx, token)
 }

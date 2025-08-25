@@ -21,6 +21,7 @@ const AuthErrorTracer = ce.AuthUsecaseTracer
 type AuthUsecase interface {
 	Register(ctx context.Context, data *entities.NewAuth, request *entities.NewRequest) (token *entities.AuthToken, err error)
 	Login(ctx context.Context, data *entities.GetAuth, request *entities.NewRequest) (token *entities.AuthToken, err error)
+	Logout(ctx context.Context, sessionToken string) (err error)
 	RefreshSession(ctx context.Context, sessionToken string) (token *entities.AuthToken, err error)
 }
 
@@ -170,6 +171,10 @@ func (u *authUsecase) Login(ctx context.Context, data *entities.GetAuth, request
 	}
 
 	return &token, nil
+}
+
+func (u *authUsecase) Logout(ctx context.Context, sessionToken string) error {
+	return u.su.RevokeSession(ctx, sessionToken)
 }
 
 func (u *authUsecase) RefreshSession(ctx context.Context, sessionToken string) (*entities.AuthToken, error) {

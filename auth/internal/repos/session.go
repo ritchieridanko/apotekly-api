@@ -18,6 +18,7 @@ type SessionRepo interface {
 	Reissue(ctx context.Context, data *entities.ReissueSession) (newSessionID int64, err error)
 	GetByToken(ctx context.Context, token string) (session *entities.Session, err error)
 	RevokeByID(ctx context.Context, sessionID int64) (err error)
+	RevokeByToken(ctx context.Context, token string) (err error)
 	HasActiveSession(ctx context.Context, authID int64) (hasAny bool, sessionID int64, err error)
 }
 
@@ -128,6 +129,32 @@ func (r *sessionRepo) RevokeByID(ctx context.Context, sessionID int64) error {
 	}
 	if rowsAffected == 0 {
 		return ce.NewError(ce.ErrCodeDBNoChange, ce.ErrMsgInternalServer, tracer, ce.ErrDBNoChange)
+	}
+
+	return nil
+}
+
+func (r *sessionRepo) RevokeByToken(ctx context.Context, token string) error {
+	tracer := SessionErrorTracer + ": RevokeByToken()"
+
+	query := `
+		UPDATE sessions
+		SET revoked_at = NOW()
+		WHERE token = $1 AND revoked_at IS NULL
+	`
+
+	executor := dbtx.GetSQLExecutor(ctx, r.db)
+	result, err := executor.ExecContext(ctx, query, token)
+	if err != nil {
+		return ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
+	}
+	if rowsAffected == 0 {
+		return ce.NewError(ce.ErrCodeDBNoChange, ce.ErrMsgInvalidCredentials, tracer, ce.ErrDBNoChange)
 	}
 
 	return nil

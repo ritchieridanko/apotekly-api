@@ -15,3 +15,9 @@ func SetSessionCookie(ctx *gin.Context, token string) {
 	host := config.GetServerHost()
 	ctx.SetCookie(constants.CookieKeySessionToken, token, duration, "/", host, isSecure, true)
 }
+
+func DeleteSessionCookie(ctx *gin.Context) {
+	isSecure := strings.ToLower(config.GetServerProtocol()) == "https"
+	host := config.GetServerHost()
+	ctx.SetCookie(constants.CookieKeySessionToken, "", -1, "/", host, isSecure, true)
+}

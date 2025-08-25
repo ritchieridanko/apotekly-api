@@ -39,3 +39,23 @@ func GenerateJWTToken(authID int64, roleID int16, isVerified bool) (jwtToken str
 
 	return jwtToken, nil
 }
+
+func ParseJWTToken(tokenString string) (claim *entities.Claim, err error) {
+	token, err := jwt.ParseWithClaims(
+		tokenString,
+		&entities.Claim{},
+		func(t *jwt.Token) (interface{}, error) {
+			return []byte(config.GetJWTSecret()), nil
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	claim, ok := token.Claims.(*entities.Claim)
+	if !ok {
+		return nil, fmt.Errorf("invalid jwt token type")
+	}
+
+	return claim, nil
+}

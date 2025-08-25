@@ -18,6 +18,7 @@ const AuthErrorTracer = ce.AuthHandlerTracer
 type AuthHandler interface {
 	Register(ctx *gin.Context)
 	Login(ctx *gin.Context)
+	Logout(ctx *gin.Context)
 	RefreshSession(ctx *gin.Context)
 }
 
@@ -105,6 +106,35 @@ func (h *authHandler) Login(ctx *gin.Context) {
 
 	utils.SetSessionCookie(ctx, newToken.SessionToken)
 	utils.SetResponse(ctx, "logged in successfully", response, http.StatusOK)
+}
+
+func (h *authHandler) Logout(ctx *gin.Context) {
+	tracer := AuthErrorTracer + ": Logout()"
+
+	token, err := ctx.Cookie(constants.CookieKeySessionToken)
+	if errors.Is(err, http.ErrNoCookie) {
+		err := ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgUnauthenticated, tracer, err)
+		ctx.Error(err)
+		return
+	}
+	if err != nil {
+		err := ce.NewError(ce.ErrCodeContext, ce.ErrMsgInternalServer, tracer, err)
+		ctx.Error(err)
+		return
+	}
+	if token == "" {
+		err := ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgUnauthenticated, tracer, ce.ErrTokenEmpty)
+		ctx.Error(err)
+		return
+	}
+
+	if err := h.au.Logout(ctx, token); err != nil {
+		ctx.Error(err)
+		return
+	}
+
+	utils.DeleteSessionCookie(ctx)
+	utils.SetResponse(ctx, "logged out successfully", nil, http.StatusNoContent)
 }
 
 func (h *authHandler) RefreshSession(ctx *gin.Context) {
