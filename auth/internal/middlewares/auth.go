@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/ritchieridanko/apotekly-api/auth/internal/constants"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/utils"
 	"github.com/ritchieridanko/apotekly-api/auth/pkg/ce"
 )
@@ -55,9 +56,9 @@ func Authenticate() gin.HandlerFunc {
 			return
 		}
 
-		ctx.Set("authID", claim.AuthID)
-		ctx.Set("roleID", claim.RoleID)
-		ctx.Set("isVerified", claim.IsVerified)
+		ctx.Set(constants.RequestKeyAuthID, claim.AuthID)
+		ctx.Set(constants.RequestKeyRoleID, claim.RoleID)
+		ctx.Set(constants.RequestKeyIsVerified, claim.IsVerified)
 		ctx.Next()
 	}
 }

@@ -17,6 +17,7 @@ type AuthRepo interface {
 	Create(ctx context.Context, data *entities.NewAuth) (authID int64, err error)
 	GetByEmail(ctx context.Context, email string) (auth *entities.Auth, err error)
 	GetByID(ctx context.Context, authID int64) (auth *entities.Auth, err error)
+	UpdateEmail(ctx context.Context, authID int64, email string) (err error)
 	IsEmailRegistered(ctx context.Context, email string) (exists bool, err error)
 	LockAccount(ctx context.Context, authID int64, until time.Time) (err error)
 }
@@ -103,6 +104,32 @@ func (r *authRepo) GetByID(ctx context.Context, authID int64) (*entities.Auth, e
 	return &auth, nil
 }
 
+func (r *authRepo) UpdateEmail(ctx context.Context, authID int64, email string) error {
+	tracer := AuthErrorTracer + ": UpdateEmail()"
+
+	query := `
+		UPDATE auth
+		SET email = $1, email_changed_at = NOW(), updated_at = NOW()
+		WHERE id = $2
+	`
+
+	executor := dbtx.GetSQLExecutor(ctx, r.db)
+	result, err := executor.ExecContext(ctx, query, email, authID)
+	if err != nil {
+		return ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
+	}
+	if rowsAffected == 0 {
+		return ce.NewError(ce.ErrCodeDBNoChange, ce.ErrMsgInvalidCredentials, tracer, ce.ErrDBNoChange)
+	}
+
+	return nil
+}
+
 func (r *authRepo) IsEmailRegistered(ctx context.Context, email string) (bool, error) {
 	tracer := AuthErrorTracer + ": IsEmailRegistered()"
 
@@ -150,7 +177,7 @@ func (r *authRepo) LockAccount(ctx context.Context, authID int64, until time.Tim
 		return ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
 	}
 	if rowsAffected == 0 {
-		return ce.NewError(ce.ErrCodeDBNoChange, ce.ErrMsgInternalServer, tracer, ce.ErrDBNoChange)
+		return ce.NewError(ce.ErrCodeDBNoChange, ce.ErrMsgInvalidCredentials, tracer, ce.ErrDBNoChange)
 	}
 
 	return nil

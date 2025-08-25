@@ -19,6 +19,7 @@ type AuthHandler interface {
 	Register(ctx *gin.Context)
 	Login(ctx *gin.Context)
 	Logout(ctx *gin.Context)
+	ChangeEmail(ctx *gin.Context)
 	RefreshSession(ctx *gin.Context)
 }
 
@@ -135,6 +136,31 @@ func (h *authHandler) Logout(ctx *gin.Context) {
 
 	utils.DeleteSessionCookie(ctx)
 	utils.SetResponse(ctx, "logged out successfully", nil, http.StatusNoContent)
+}
+
+func (h *authHandler) ChangeEmail(ctx *gin.Context) {
+	tracer := AuthErrorTracer + ": ChangeEmail()"
+
+	authID, err := utils.GetAuthIDFromContext(ctx)
+	if err != nil {
+		err := ce.NewError(ce.ErrCodeContext, ce.ErrMsgInternalServer, tracer, err)
+		ctx.Error(err)
+		return
+	}
+
+	var payload dto.ReqEmailChange
+	if err := ctx.ShouldBindJSON(&payload); err != nil {
+		err := ce.NewError(ce.ErrCodeInvalidPayload, ce.ErrMsgInvalidPayload, tracer, err)
+		ctx.Error(err)
+		return
+	}
+
+	if err := h.au.ChangeEmail(ctx, authID, payload.NewEmail); err != nil {
+		ctx.Error(err)
+		return
+	}
+
+	utils.SetResponse(ctx, "email changed successfully", nil, http.StatusNoContent)
 }
 
 func (h *authHandler) RefreshSession(ctx *gin.Context) {

@@ -128,7 +128,7 @@ func (r *sessionRepo) RevokeByID(ctx context.Context, sessionID int64) error {
 		return ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
 	}
 	if rowsAffected == 0 {
-		return ce.NewError(ce.ErrCodeDBNoChange, ce.ErrMsgInternalServer, tracer, ce.ErrDBNoChange)
+		return ce.NewError(ce.ErrCodeDBNoChange, ce.ErrMsgInvalidCredentials, tracer, ce.ErrDBNoChange)
 	}
 
 	return nil

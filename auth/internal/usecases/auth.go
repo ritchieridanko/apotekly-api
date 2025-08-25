@@ -22,6 +22,7 @@ type AuthUsecase interface {
 	Register(ctx context.Context, data *entities.NewAuth, request *entities.NewRequest) (token *entities.AuthToken, err error)
 	Login(ctx context.Context, data *entities.GetAuth, request *entities.NewRequest) (token *entities.AuthToken, err error)
 	Logout(ctx context.Context, sessionToken string) (err error)
+	ChangeEmail(ctx context.Context, authID int64, newEmail string) (err error)
 	RefreshSession(ctx context.Context, sessionToken string) (token *entities.AuthToken, err error)
 }
 
@@ -29,11 +30,12 @@ type authUsecase struct {
 	ar    repos.AuthRepo
 	tx    dbtx.TxManager
 	su    SessionUsecase
+	oau   OAuthUsecase
 	cache caches.Cache
 }
 
-func NewAuthUsecase(ar repos.AuthRepo, tx dbtx.TxManager, su SessionUsecase, cache caches.Cache) AuthUsecase {
-	return &authUsecase{ar, tx, su, cache}
+func NewAuthUsecase(ar repos.AuthRepo, tx dbtx.TxManager, su SessionUsecase, oau OAuthUsecase, cache caches.Cache) AuthUsecase {
+	return &authUsecase{ar, tx, su, oau, cache}
 }
 
 func (u *authUsecase) Register(ctx context.Context, data *entities.NewAuth, request *entities.NewRequest) (*entities.AuthToken, error) {
@@ -175,6 +177,32 @@ func (u *authUsecase) Login(ctx context.Context, data *entities.GetAuth, request
 
 func (u *authUsecase) Logout(ctx context.Context, sessionToken string) error {
 	return u.su.RevokeSession(ctx, sessionToken)
+}
+
+func (u *authUsecase) ChangeEmail(ctx context.Context, authID int64, newEmail string) error {
+	tracer := AuthErrorTracer + ": ChangeEmail()"
+
+	return u.tx.ReturnError(ctx, func(ctx context.Context) error {
+		// Email cannot be changed if registered with oauth
+		exists, err := u.oau.IsAuthRegistered(ctx, authID)
+		if err != nil {
+			return err
+		}
+		if exists {
+			return ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgOAuthEmailChange, tracer, ce.ErrOAuthEmailChange)
+		}
+
+		normalizedEmail := utils.NormalizeString(newEmail)
+		exists, err = u.ar.IsEmailRegistered(ctx, normalizedEmail)
+		if err != nil {
+			return err
+		}
+		if exists {
+			return ce.NewError(ce.ErrCodeConflict, ce.ErrMsgEmailRegistered, tracer, ce.ErrEmailAlreadyRegistered)
+		}
+
+		return u.ar.UpdateEmail(ctx, authID, normalizedEmail)
+	})
 }
 
 func (u *authUsecase) RefreshSession(ctx context.Context, sessionToken string) (*entities.AuthToken, error) {

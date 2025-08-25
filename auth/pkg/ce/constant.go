@@ -29,6 +29,7 @@ const (
 	AuthMiddlewareTracer string = "[MIDDLEWARE/AUTH]"
 	AuthRepoTracer       string = "[REPO/AUTH]"
 	AuthUsecaseTracer    string = "[USECASE/AUTH]"
+	OAuthRepoTracer      string = "[REPO/OAUTH]"
 	SessionRepoTracer    string = "[REPO/SESSION]"
 	SessionUsecaseTracer string = "[USECASE/SESSION]"
 )
@@ -40,6 +41,7 @@ const (
 	ErrMsgInternalServer     string = "internal server error"
 	ErrMsgInvalidCredentials string = "invalid credentials"
 	ErrMsgInvalidPayload     string = "invalid payload"
+	ErrMsgOAuthEmailChange   string = "oauth-linked accounts cannot change email"
 	ErrMsgUnauthenticated    string = "unauthenticated"
 )
 
@@ -50,6 +52,7 @@ var (
 	ErrEmailAlreadyRegistered error = fmt.Errorf("email already registered")
 	ErrInvalidTokenFormat     error = fmt.Errorf("invalid token format")
 	ErrInvalidType            error = fmt.Errorf("invalid return type")
+	ErrOAuthEmailChange       error = fmt.Errorf("oauth-linked account attempted to change email")
 	ErrOAuthRegularLogin      error = fmt.Errorf("regular auth attempted to authenticate by oauth")
 	ErrSessionExpired         error = fmt.Errorf("session has expired")
 	ErrSessionRevoked         error = fmt.Errorf("session has been revoked")

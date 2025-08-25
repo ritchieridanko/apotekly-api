@@ -12,5 +12,7 @@ func AuthRouters(h handlers.AuthHandler) func(*gin.RouterGroup) {
 		rg.POST("/login", h.Login)
 		rg.POST("/logout", middlewares.Authenticate(), h.Logout)
 		rg.POST("/refresh-session", h.RefreshSession)
+
+		rg.PATCH("/email", middlewares.Authenticate(), h.ChangeEmail)
 	}
 }

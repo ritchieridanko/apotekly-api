@@ -16,12 +16,14 @@ import (
 func SetupDependencies(db *sql.DB, redis *redis.Client) (router *gin.Engine) {
 	sr := repos.NewSessionRepo(db)
 	ar := repos.NewAuthRepo(db)
+	oar := repos.NewOAuthRepo(db)
 
 	txManager := dbtx.NewTxManager(db)
 	cache := caches.NewCache(redis)
 
 	su := usecases.NewSessionUsecase(sr, txManager)
-	au := usecases.NewAuthUsecase(ar, txManager, su, cache)
+	oau := usecases.NewOAuthUsecase(oar)
+	au := usecases.NewAuthUsecase(ar, txManager, su, oau, cache)
 
 	ah := handlers.NewAuthHandler(au)
 
