@@ -18,6 +18,7 @@ type AuthRepo interface {
 	GetByEmail(ctx context.Context, email string) (auth *entities.Auth, err error)
 	GetByID(ctx context.Context, authID int64) (auth *entities.Auth, err error)
 	UpdateEmail(ctx context.Context, authID int64, email string) (err error)
+	UpdatePassword(ctx context.Context, authID int64, password string) (err error)
 	IsEmailRegistered(ctx context.Context, email string) (exists bool, err error)
 	LockAccount(ctx context.Context, authID int64, until time.Time) (err error)
 }
@@ -115,6 +116,32 @@ func (r *authRepo) UpdateEmail(ctx context.Context, authID int64, email string) 
 
 	executor := dbtx.GetSQLExecutor(ctx, r.db)
 	result, err := executor.ExecContext(ctx, query, email, authID)
+	if err != nil {
+		return ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
+	}
+	if rowsAffected == 0 {
+		return ce.NewError(ce.ErrCodeDBNoChange, ce.ErrMsgInvalidCredentials, tracer, ce.ErrDBNoChange)
+	}
+
+	return nil
+}
+
+func (r *authRepo) UpdatePassword(ctx context.Context, authID int64, password string) error {
+	tracer := AuthErrorTracer + ": UpdatePassword()"
+
+	query := `
+		UPDATE auth
+		SET password = $1, password_changed_at = NOW(), updated_at = NOW()
+		WHERE id = $2
+	`
+
+	executor := dbtx.GetSQLExecutor(ctx, r.db)
+	result, err := executor.ExecContext(ctx, query, password, authID)
 	if err != nil {
 		return ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
 	}

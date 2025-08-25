@@ -20,6 +20,7 @@ type AuthHandler interface {
 	Login(ctx *gin.Context)
 	Logout(ctx *gin.Context)
 	ChangeEmail(ctx *gin.Context)
+	ChangePassword(ctx *gin.Context)
 	RefreshSession(ctx *gin.Context)
 }
 
@@ -161,6 +162,36 @@ func (h *authHandler) ChangeEmail(ctx *gin.Context) {
 	}
 
 	utils.SetResponse(ctx, "email changed successfully", nil, http.StatusNoContent)
+}
+
+func (h *authHandler) ChangePassword(ctx *gin.Context) {
+	tracer := AuthErrorTracer + ": ChangePassword()"
+
+	authID, err := utils.GetAuthIDFromContext(ctx)
+	if err != nil {
+		err := ce.NewError(ce.ErrCodeContext, ce.ErrMsgInternalServer, tracer, err)
+		ctx.Error(err)
+		return
+	}
+
+	var payload dto.ReqPasswordChange
+	if err := ctx.ShouldBindJSON(&payload); err != nil {
+		err := ce.NewError(ce.ErrCodeInvalidPayload, ce.ErrMsgInvalidPayload, tracer, err)
+		ctx.Error(err)
+		return
+	}
+
+	data := entities.NewPassword{
+		OldPassword: payload.OldPassword,
+		NewPassword: payload.NewPassword,
+	}
+
+	if err := h.au.ChangePassword(ctx, authID, &data); err != nil {
+		ctx.Error(err)
+		return
+	}
+
+	utils.SetResponse(ctx, "password changed successfully", nil, http.StatusNoContent)
 }
 
 func (h *authHandler) RefreshSession(ctx *gin.Context) {

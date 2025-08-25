@@ -23,6 +23,7 @@ type AuthUsecase interface {
 	Login(ctx context.Context, data *entities.GetAuth, request *entities.NewRequest) (token *entities.AuthToken, err error)
 	Logout(ctx context.Context, sessionToken string) (err error)
 	ChangeEmail(ctx context.Context, authID int64, newEmail string) (err error)
+	ChangePassword(ctx context.Context, authID int64, data *entities.NewPassword) (err error)
 	RefreshSession(ctx context.Context, sessionToken string) (token *entities.AuthToken, err error)
 }
 
@@ -202,6 +203,30 @@ func (u *authUsecase) ChangeEmail(ctx context.Context, authID int64, newEmail st
 		}
 
 		return u.ar.UpdateEmail(ctx, authID, normalizedEmail)
+	})
+}
+
+func (u *authUsecase) ChangePassword(ctx context.Context, authID int64, data *entities.NewPassword) error {
+	tracer := AuthErrorTracer + ": ChangePassword()"
+
+	return u.tx.ReturnError(ctx, func(ctx context.Context) error {
+		auth, err := u.ar.GetByID(ctx, authID)
+		if err != nil {
+			return err
+		}
+		if auth.Password == nil {
+			return ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgOAuthPasswordChange, tracer, ce.ErrOAuthPasswordChange)
+		}
+		if err := utils.ValidatePassword(*auth.Password, data.OldPassword); err != nil {
+			return ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgInvalidPassword, tracer, err)
+		}
+
+		hashedNewPassword, err := utils.HashPassword(data.NewPassword)
+		if err != nil {
+			return ce.NewError(ce.ErrCodePassHashing, ce.ErrMsgInternalServer, tracer, err)
+		}
+
+		return u.ar.UpdatePassword(ctx, auth.ID, hashedNewPassword)
 	})
 }
 

@@ -14,5 +14,6 @@ func AuthRouters(h handlers.AuthHandler) func(*gin.RouterGroup) {
 		rg.POST("/refresh-session", h.RefreshSession)
 
 		rg.PATCH("/email", middlewares.Authenticate(), h.ChangeEmail)
+		rg.PATCH("/password", middlewares.Authenticate(), h.ChangePassword)
 	}
 }
