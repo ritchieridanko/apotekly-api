@@ -23,10 +23,11 @@ const (
 
 // error tracers
 const (
-	DBTXTracer        string = "[DBTX(USER)]"
-	UserHandlerTracer string = "[HANDLER/USER]"
-	UserRepoTracer    string = "[REPO/USER]"
-	UserUsecaseTracer string = "[USECASE/USER]"
+	AuthMiddlewareTracer string = "[MIDDLEWARE/AUTH(USER)]"
+	DBTXTracer           string = "[DBTX(USER)]"
+	UserHandlerTracer    string = "[HANDLER/USER]"
+	UserRepoTracer       string = "[REPO/USER]"
+	UserUsecaseTracer    string = "[USECASE/USER]"
 )
 
 // external error messages

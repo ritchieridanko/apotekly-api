@@ -1,5 +1,7 @@
 package constants
 
 const (
-	RequestKeyAuthID string = "authID"
+	RequestKeyAuthID     string = "authID"
+	RequestKeyRoleID     string = "roleID"
+	RequestKeyIsVerified string = "isVerified"
 )
