@@ -1,0 +1,14 @@
+package utils
+
+import (
+	"github.com/gin-gonic/gin"
+	"github.com/ritchieridanko/apotekly-api/user/internal/dto"
+)
+
+func SetResponse(ctx *gin.Context, message string, data any, code int) {
+	response := dto.Response{
+		Message: message,
+		Data:    data,
+	}
+	ctx.JSON(code, &response)
+}
