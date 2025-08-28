@@ -32,40 +32,23 @@ const (
 
 // external error messages
 const (
+	ErrMsgInternalServer       string = "internal server error"
+	ErrMsgInvalidCredentials   string = "invalid credentials"
 	ErrMsgInvalidDataBirthdate string = "invalid data: birthdate"
 	ErrMsgInvalidDataSex       string = "invalid data: sex"
+	ErrMsgInvalidParams        string = "invalid params"
+	ErrMsgInvalidPayload       string = "invalid payload"
 	ErrMsgUserAlreadyExists    string = "user already exists"
-
-	ErrMsgAccountLocked       string = "account locked"
-	ErrMsgEmailRegistered     string = "email already registered"
-	ErrMsgEmailNotVerified    string = "email not verified"
-	ErrMsgInternalServer      string = "internal server error"
-	ErrMsgInvalidCredentials  string = "invalid credentials"
-	ErrMsgInvalidParams       string = "invalid params"
-	ErrMsgInvalidPassword     string = "invalid password"
-	ErrMsgInvalidPayload      string = "invalid payload"
-	ErrMsgOAuthEmailChange    string = "oauth-linked accounts cannot change email"
-	ErrMsgOAuthPasswordChange string = "oauth-linked accounts cannot change password"
-	ErrMsgUnauthenticated     string = "unauthenticated"
+	ErrMsgUnauthenticated      string = "unauthenticated"
 )
 
 // internal error loggers
 var (
+	ErrDBNoChange           error = fmt.Errorf("no rows affected after query execution")
+	ErrInvalidAudience      error = fmt.Errorf("service not included in the token's audience")
 	ErrInvalidDataBirthdate error = fmt.Errorf("invalid data-birthdate")
 	ErrInvalidDataSex       error = fmt.Errorf("invalid data-sex")
+	ErrInvalidTokenFormat   error = fmt.Errorf("invalid token format")
+	ErrTokenNotFound        error = fmt.Errorf("token not found")
 	ErrUserAlreadyExists    error = fmt.Errorf("auth already has user")
-
-	ErrAccountLocked             error = fmt.Errorf("failed authentication multiple times, account locked")
-	ErrDBNoChange                error = fmt.Errorf("no rows affected after query execution")
-	ErrEmailAlreadyRegistered    error = fmt.Errorf("email already registered")
-	ErrEmailVerificationRequired error = fmt.Errorf("email verification required")
-	ErrInvalidTokenFormat        error = fmt.Errorf("invalid token format")
-	ErrInvalidType               error = fmt.Errorf("invalid return type")
-	ErrOAuthEmailChange          error = fmt.Errorf("oauth-linked account attempted to change email")
-	ErrOAuthPasswordChange       error = fmt.Errorf("oauth-linked account attempted to change password")
-	ErrOAuthRegularLogin         error = fmt.Errorf("regular auth attempted to authenticate by oauth")
-	ErrSessionExpired            error = fmt.Errorf("session has expired")
-	ErrSessionRevoked            error = fmt.Errorf("session has been revoked")
-	ErrTokenEmpty                error = fmt.Errorf("token empty")
-	ErrTokenNotFound             error = fmt.Errorf("token not found")
 )

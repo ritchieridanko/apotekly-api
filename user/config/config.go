@@ -11,5 +11,6 @@ func Initialize() {
 		log.Fatalln("FATAL: unable to load .env file:", err)
 	}
 
+	LoadAppConfig()
 	LoadAuthConfig()
 }

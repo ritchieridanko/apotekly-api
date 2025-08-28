@@ -27,3 +27,12 @@ func ParseJWTToken(tokenString string) (claim *entities.Claim, err error) {
 
 	return claim, nil
 }
+
+func IsAudienceValid(audiences jwt.ClaimStrings) (isValid bool) {
+	for _, audience := range audiences {
+		if audience == config.GetAppName() {
+			return true
+		}
+	}
+	return false
+}

@@ -56,6 +56,13 @@ func Authenticate() gin.HandlerFunc {
 			return
 		}
 
+		if !utils.IsAudienceValid(claim.Audience) {
+			err := ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgInvalidCredentials, tracer, ce.ErrInvalidAudience)
+			ctx.Error(err)
+			ctx.Abort()
+			return
+		}
+
 		ctx.Set(constants.RequestKeyAuthID, claim.AuthID)
 		ctx.Set(constants.RequestKeyRoleID, claim.RoleID)
 		ctx.Set(constants.RequestKeyIsVerified, claim.IsVerified)
