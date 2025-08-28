@@ -12,8 +12,8 @@ import (
 
 func NewConnection() (redis *r.Client, err error) {
 	client := r.NewClient(&r.Options{
-		Addr:     fmt.Sprintf("%s:%s", config.GetCacheHost(), config.GetCachePort()),
-		Password: config.GetCachePass(),
+		Addr:     fmt.Sprintf("%s:%s", config.GetRedisHost(), config.GetRedisPort()),
+		Password: config.GetRedisPass(),
 	})
 
 	// Test the connection

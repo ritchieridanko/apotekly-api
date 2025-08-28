@@ -22,5 +22,5 @@ type cache struct {
 }
 
 func NewCache(client *redis.Client) Cache {
-	return &cache{client, config.GetCacheMaxRetries(), config.GetCacheBaseDelay()}
+	return &cache{client, config.GetRedisMaxRetries(), config.GetRedisBaseDelay()}
 }
