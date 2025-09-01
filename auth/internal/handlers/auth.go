@@ -87,27 +87,17 @@ func (h *authHandler) Login(ctx *gin.Context) {
 		IPAddress: ctx.ClientIP(),
 	}
 
-	var newToken *entities.AuthToken
-	token, err := ctx.Cookie(constants.CookieKeySessionToken)
-	if err == nil && token != "" {
-		newToken, err = h.au.RefreshSession(ctx, token)
-		if err != nil {
-			newToken, err = h.au.Login(ctx, &data, &request)
-		}
-	} else {
-		newToken, err = h.au.Login(ctx, &data, &request)
-	}
-
+	token, err := h.au.Login(ctx, &data, &request)
 	if err != nil {
 		ctx.Error(err)
 		return
 	}
 
 	response := dto.RespAuth{
-		Token: newToken.AccessToken,
+		Token: token.AccessToken,
 	}
 
-	utils.SetSessionCookie(ctx, newToken.SessionToken)
+	utils.SetSessionCookie(ctx, token.SessionToken)
 	utils.SetResponse(ctx, "logged in successfully", response, http.StatusOK)
 }
 
