@@ -13,6 +13,7 @@ func Initialize(auth func(*gin.RouterGroup)) *gin.Engine {
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 	router.Use(middlewares.ErrorHandler())
+	router.Use(middlewares.CORS())
 
 	router.ContextWithFallback = true
 

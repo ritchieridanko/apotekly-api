@@ -12,6 +12,7 @@ func Initialize() {
 	}
 
 	LoadAuthConfig()
+	LoadClientConfig()
 	LoadDBConfig()
 	LoadRedisConfig()
 	LoadServerConfig()
