@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/constants"
@@ -23,6 +24,7 @@ type AuthHandler interface {
 	ChangePassword(ctx *gin.Context)
 	ForgotPassword(ctx *gin.Context)
 	IsEmailRegistered(ctx *gin.Context)
+	IsPasswordResetTokenValid(ctx *gin.Context)
 	RefreshSession(ctx *gin.Context)
 }
 
@@ -222,6 +224,36 @@ func (h *authHandler) IsEmailRegistered(ctx *gin.Context) {
 
 	response := dto.RespEmailCheckQuery{
 		IsRegistered: isRegistered,
+	}
+
+	utils.SetResponse(ctx, "ok", response, http.StatusOK)
+}
+
+func (h *authHandler) IsPasswordResetTokenValid(ctx *gin.Context) {
+	tracer := AuthErrorTracer + ": IsPasswordResetTokenValid()"
+
+	var payload dto.ReqTokenCheckQuery
+	if err := ctx.ShouldBindJSON(&payload); err != nil {
+		err := ce.NewError(ce.ErrCodeInvalidPayload, ce.ErrMsgInvalidPayload, tracer, err)
+		ctx.Error(err)
+		return
+	}
+
+	token := strings.TrimSpace(payload.Token)
+	if token == "" {
+		err := ce.NewError(ce.ErrCodeInvalidPayload, ce.ErrMsgInvalidPayload, tracer, ce.ErrTokenEmpty)
+		ctx.Error(err)
+		return
+	}
+
+	isValid, err := h.au.IsPasswordResetTokenValid(ctx, token)
+	if err != nil {
+		ctx.Error(err)
+		return
+	}
+
+	response := dto.RespTokenCheckQuery{
+		IsValid: isValid,
 	}
 
 	utils.SetResponse(ctx, "ok", response, http.StatusOK)
