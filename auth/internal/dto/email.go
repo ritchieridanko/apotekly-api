@@ -11,3 +11,7 @@ type ReqEmailCheckQuery struct {
 type RespEmailCheckQuery struct {
 	IsRegistered bool `json:"is_registered"`
 }
+
+type ReqEmailVerification struct {
+	Token string `form:"token" binding:"required"`
+}

@@ -25,6 +25,7 @@ type AuthHandler interface {
 	ForgotPassword(ctx *gin.Context)
 	ResetPassword(ctx *gin.Context)
 	ResendVerification(ctx *gin.Context)
+	VerifyEmail(ctx *gin.Context)
 	IsEmailRegistered(ctx *gin.Context)
 	IsPasswordResetTokenValid(ctx *gin.Context)
 	RefreshSession(ctx *gin.Context)
@@ -254,6 +255,31 @@ func (h *authHandler) ResendVerification(ctx *gin.Context) {
 	}
 
 	utils.SetResponse(ctx, "please check your email", nil, http.StatusOK)
+}
+
+func (h *authHandler) VerifyEmail(ctx *gin.Context) {
+	tracer := AuthErrorTracer + ": VerifyEmail()"
+
+	var params dto.ReqEmailVerification
+	if err := ctx.ShouldBindQuery(&params); err != nil {
+		err := ce.NewError(ce.ErrCodeInvalidParams, ce.ErrMsgInvalidParams, tracer, err)
+		ctx.Error(err)
+		return
+	}
+
+	token := strings.TrimSpace(params.Token)
+	if token == "" {
+		err := ce.NewError(ce.ErrCodeInvalidParams, ce.ErrMsgInvalidParams, tracer, ce.ErrTokenEmpty)
+		ctx.Error(err)
+		return
+	}
+
+	if err := h.au.VerifyEmail(ctx, token); err != nil {
+		ctx.Error(err)
+		return
+	}
+
+	utils.SetResponse(ctx, "email verified successfully", nil, http.StatusOK)
 }
 
 func (h *authHandler) IsEmailRegistered(ctx *gin.Context) {

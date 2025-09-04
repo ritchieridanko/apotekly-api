@@ -20,6 +20,7 @@ type AuthRepo interface {
 	UpdateEmail(ctx context.Context, authID int64, email string) (err error)
 	UpdatePassword(ctx context.Context, authID int64, password string) (err error)
 	IsEmailRegistered(ctx context.Context, email string) (exists bool, err error)
+	VerifyEmail(ctx context.Context, authID int64) (err error)
 	LockAccount(ctx context.Context, authID int64, until time.Time) (err error)
 }
 
@@ -182,6 +183,32 @@ func (r *authRepo) IsEmailRegistered(ctx context.Context, email string) (bool, e
 	}
 
 	return true, nil
+}
+
+func (r *authRepo) VerifyEmail(ctx context.Context, authID int64) error {
+	tracer := AuthErrorTracer + ": VerifyEmail()"
+
+	query := `
+		UPDATE auth
+		SET is_verified = TRUE, updated_at = NOW()
+		WHERE id = $1 AND is_verified = FALSE
+	`
+
+	executor := dbtx.GetSQLExecutor(ctx, r.db)
+	result, err := executor.ExecContext(ctx, query, authID)
+	if err != nil {
+		return ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
+	}
+	if rowsAffected == 0 {
+		return ce.NewError(ce.ErrCodeDBNoChange, ce.ErrMsgInvalidCredentials, tracer, ce.ErrDBNoChange)
+	}
+
+	return nil
 }
 
 func (r *authRepo) LockAccount(ctx context.Context, authID int64, until time.Time) error {

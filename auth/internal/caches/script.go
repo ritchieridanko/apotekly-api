@@ -117,3 +117,39 @@ func (c *cache) NewOrReplaceVerificationToken(ctx context.Context, authID int64,
 
 	return nil
 }
+
+func (c *cache) ConsumeVerificationToken(ctx context.Context, token string) (int64, error) {
+	tracer := CacheErrorTracer + ": ConsumeVerificationToken()"
+
+	tokenKey := utils.GenerateDynamicRedisKey(constants.RedisKeyVerificationToken, token)
+
+	script := redis.NewScript(`
+		local authID = redis.call("GET", KEYS[1])
+		if authID then
+			redis.call("DEL", KEYS[1])
+			redis.call("DEL", KEYS[2] .. ":" .. authID)
+			return authID
+		end
+		return nil
+	`)
+
+	result, err := script.Run(ctx, c.client, []string{tokenKey, constants.RedisKeyVerificationAuth}).Result()
+	if err == redis.Nil {
+		return 0, ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgInvalidToken, tracer, err)
+	}
+	if err != nil {
+		return 0, ce.NewError(ce.ErrCodeCache, ce.ErrMsgInternalServer, tracer, err)
+	}
+
+	value, ok := result.(string)
+	if !ok {
+		return 0, ce.NewError(ce.ErrCodeParsing, ce.ErrMsgInternalServer, tracer, ce.ErrInvalidType)
+	}
+
+	authID, err := utils.ToInt64(value)
+	if err != nil {
+		return 0, ce.NewError(ce.ErrCodeParsing, ce.ErrMsgInternalServer, tracer, err)
+	}
+
+	return authID, nil
+}
