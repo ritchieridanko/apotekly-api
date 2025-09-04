@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/ritchieridanko/apotekly-api/auth/config"
@@ -14,8 +15,6 @@ import (
 	"github.com/ritchieridanko/apotekly-api/auth/pkg/ce"
 	"github.com/ritchieridanko/apotekly-api/auth/pkg/dbtx"
 )
-
-// TODO (1): Send email verification
 
 const AuthErrorTracer = ce.AuthUsecaseTracer
 
@@ -51,9 +50,11 @@ func (u *authUsecase) Register(ctx context.Context, data *entities.NewAuth, requ
 	now := time.Now().UTC()
 	sessionDuration := time.Duration(config.GetSessionDuration()) * time.Minute
 
+	var normalizedEmail string
+	var authID int64
 	var token entities.AuthToken
 	err := u.tx.ReturnError(ctx, func(ctx context.Context) error {
-		normalizedEmail := utils.NormalizeString(data.Email)
+		normalizedEmail = utils.NormalizeString(data.Email)
 
 		exists, err := u.ar.IsEmailRegistered(ctx, normalizedEmail)
 		if err != nil {
@@ -74,7 +75,7 @@ func (u *authUsecase) Register(ctx context.Context, data *entities.NewAuth, requ
 			Role:     constants.RoleCustomer,
 		}
 
-		authID, err := u.ar.Create(ctx, &newData)
+		authID, err = u.ar.Create(ctx, &newData)
 		if err != nil {
 			return err
 		}
@@ -108,7 +109,16 @@ func (u *authUsecase) Register(ctx context.Context, data *entities.NewAuth, requ
 		return nil, err
 	}
 
-	// TODO (1): Send email verification
+	verificationToken := utils.GenerateRandomToken()
+	tokenDuration := time.Duration(config.GetEmailVerificationTokenDuration()) * time.Minute
+	if err := u.cache.NewOrReplaceVerificationToken(ctx, authID, verificationToken, tokenDuration); err != nil {
+		log.Println("WARNING: failed to set verification token in redis after registration:", err.Error())
+		return &token, nil
+	}
+
+	if err := u.email.SendWelcomeMessage(normalizedEmail, verificationToken); err != nil {
+		log.Println("WARNING: failed to send welcome message after registration:", err.Error())
+	}
 
 	return &token, nil
 }

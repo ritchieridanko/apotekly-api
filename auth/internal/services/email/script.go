@@ -27,3 +27,23 @@ func (es *emailService) SendPasswordResetToken(email, token string) error {
 	message := es.BuildMessage([]string{email}, "Password Reset Request", body.String(), "")
 	return es.SendEmail(message)
 }
+
+func (es *emailService) SendWelcomeMessage(email, token string) error {
+	tracer := EmailErrorTracer + ": SendWelcomeMessage()"
+
+	data := struct {
+		URL  string
+		Year int
+	}{
+		URL:  utils.GenerateURLWithTokenQuery("/auth/verify-email", token),
+		Year: time.Now().UTC().Year(),
+	}
+
+	var body bytes.Buffer
+	if err := es.template.ExecuteTemplate(&body, "welcome.html", data); err != nil {
+		return ce.NewError(ce.ErrCodeParsing, ce.ErrMsgInternalServer, tracer, err)
+	}
+
+	message := es.BuildMessage([]string{email}, "Welcome to Apotekly", body.String(), "")
+	return es.SendEmail(message)
+}

@@ -15,6 +15,7 @@ const EmailErrorTracer = ce.EmailTracer
 
 type EmailService interface {
 	SendPasswordResetToken(email, token string) (err error)
+	SendWelcomeMessage(email, token string) (err error)
 }
 
 type emailService struct {
