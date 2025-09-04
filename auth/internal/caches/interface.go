@@ -16,6 +16,7 @@ type Cache interface {
 	Del(ctx context.Context, keys ...string) (err error)
 	ShouldAccountBeLocked(ctx context.Context, key string) (shouldBeLocked bool, err error)
 	NewOrReplacePasswordResetToken(ctx context.Context, authID int64, token string, duration time.Duration) (err error)
+	ConsumePasswordResetToken(ctx context.Context, token string) (authID int64, err error)
 }
 
 type cache struct {

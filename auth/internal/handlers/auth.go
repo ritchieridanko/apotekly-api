@@ -23,6 +23,7 @@ type AuthHandler interface {
 	ChangeEmail(ctx *gin.Context)
 	ChangePassword(ctx *gin.Context)
 	ForgotPassword(ctx *gin.Context)
+	ResetPassword(ctx *gin.Context)
 	IsEmailRegistered(ctx *gin.Context)
 	IsPasswordResetTokenValid(ctx *gin.Context)
 	RefreshSession(ctx *gin.Context)
@@ -204,6 +205,36 @@ func (h *authHandler) ForgotPassword(ctx *gin.Context) {
 	}
 
 	utils.SetResponse(ctx, "please check your email", nil, http.StatusOK)
+}
+
+func (h *authHandler) ResetPassword(ctx *gin.Context) {
+	tracer := AuthErrorTracer + ": ResetPassword()"
+
+	var payload dto.ReqPasswordReset
+	if err := ctx.ShouldBindJSON(&payload); err != nil {
+		err := ce.NewError(ce.ErrCodeInvalidPayload, ce.ErrMsgInvalidPayload, tracer, err)
+		ctx.Error(err)
+		return
+	}
+
+	token := strings.TrimSpace(payload.Token)
+	if token == "" {
+		err := ce.NewError(ce.ErrCodeInvalidPayload, ce.ErrMsgInvalidPayload, tracer, ce.ErrTokenEmpty)
+		ctx.Error(err)
+		return
+	}
+
+	data := entities.PasswordReset{
+		Token:       token,
+		NewPassword: payload.NewPassword,
+	}
+
+	if err := h.au.ResetPassword(ctx, &data); err != nil {
+		ctx.Error(err)
+		return
+	}
+
+	utils.SetResponse(ctx, "password changed successfully", nil, http.StatusOK)
 }
 
 func (h *authHandler) IsEmailRegistered(ctx *gin.Context) {

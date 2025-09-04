@@ -46,6 +46,7 @@ const (
 	ErrMsgInvalidParams       string = "invalid params"
 	ErrMsgInvalidPassword     string = "invalid password"
 	ErrMsgInvalidPayload      string = "invalid payload"
+	ErrMsgInvalidToken        string = "invalid token"
 	ErrMsgOAuthEmailChange    string = "oauth-linked accounts cannot change email"
 	ErrMsgOAuthPasswordChange string = "oauth-linked accounts cannot change password"
 	ErrMsgUnauthenticated     string = "unauthenticated"

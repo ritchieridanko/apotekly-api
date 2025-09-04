@@ -8,3 +8,8 @@ type ReqPasswordChange struct {
 type ReqForgotPassword struct {
 	Email string `json:"email" binding:"required,email"`
 }
+
+type ReqPasswordReset struct {
+	Token       string `json:"token" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required,password"`
+}
