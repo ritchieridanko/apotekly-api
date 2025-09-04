@@ -3,6 +3,8 @@ package email
 import (
 	"html/template"
 	"log"
+	"path/filepath"
+	"runtime"
 
 	"github.com/ritchieridanko/apotekly-api/auth/config"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/infras/mailer"
@@ -22,7 +24,12 @@ type emailService struct {
 }
 
 func NewEmailService(sender *mailer.Mailer) EmailService {
-	templates, err := template.ParseGlob("templates/*.html")
+	// Get the directory of the current file (interface.go)
+	_, filename, _, _ := runtime.Caller(0)
+	baseDir := filepath.Dir(filename)
+
+	tmplDir := filepath.Join(baseDir, "templates", "*.html")
+	templates, err := template.ParseGlob(tmplDir)
 	if err != nil {
 		log.Fatalln("FATAL: unable to parse html template files:", err)
 	}

@@ -2,6 +2,7 @@ package caches
 
 import (
 	"context"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/ritchieridanko/apotekly-api/auth/config"
@@ -13,6 +14,7 @@ const CacheErrorTracer = ce.CacheTracer
 type Cache interface {
 	Del(ctx context.Context, keys ...string) (err error)
 	ShouldAccountBeLocked(ctx context.Context, key string) (shouldBeLocked bool, err error)
+	NewOrReplacePasswordResetToken(ctx context.Context, authID int64, token string, duration time.Duration) (err error)
 }
 
 type cache struct {

@@ -2,6 +2,7 @@ package email
 
 import (
 	"bytes"
+	"time"
 
 	"github.com/ritchieridanko/apotekly-api/auth/internal/utils"
 	"github.com/ritchieridanko/apotekly-api/auth/pkg/ce"
@@ -10,8 +11,15 @@ import (
 func (es *emailService) SendPasswordResetToken(email, token string) error {
 	tracer := EmailErrorTracer + ": SendPasswordResetToken()"
 
+	data := struct {
+		URL  string
+		Year int
+	}{
+		URL:  utils.GenerateURLWithTokenQuery("/auth/reset-password", token),
+		Year: time.Now().UTC().Year(),
+	}
+
 	var body bytes.Buffer
-	data := struct{ URL string }{URL: utils.GenerateURLWithTokenQuery("/auth/reset-password", token)}
 	if err := es.template.ExecuteTemplate(&body, "password_reset.html", data); err != nil {
 		return ce.NewError(ce.ErrCodeParsing, ce.ErrMsgInternalServer, tracer, err)
 	}

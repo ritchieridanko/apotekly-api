@@ -14,6 +14,7 @@ func AuthRouters(h handlers.AuthHandler) func(*gin.RouterGroup) {
 		rg.POST("/login", h.Login)
 		rg.POST("/logout", middlewares.Authenticate(), h.Logout)
 		rg.POST("/refresh-session", h.RefreshSession)
+		rg.POST("/forgot-password", h.ForgotPassword)
 
 		rg.PATCH("/email", middlewares.Authenticate(), middlewares.RequireVerified(), h.ChangeEmail)
 		rg.PATCH("/password", middlewares.Authenticate(), middlewares.RequireVerified(), h.ChangePassword)

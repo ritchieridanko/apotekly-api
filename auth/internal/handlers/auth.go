@@ -21,6 +21,7 @@ type AuthHandler interface {
 	Logout(ctx *gin.Context)
 	ChangeEmail(ctx *gin.Context)
 	ChangePassword(ctx *gin.Context)
+	ForgotPassword(ctx *gin.Context)
 	IsEmailRegistered(ctx *gin.Context)
 	RefreshSession(ctx *gin.Context)
 }
@@ -127,7 +128,7 @@ func (h *authHandler) Logout(ctx *gin.Context) {
 	}
 
 	utils.DeleteSessionCookie(ctx)
-	utils.SetResponse(ctx, "logged out successfully", nil, http.StatusNoContent)
+	utils.SetResponse(ctx, "", nil, http.StatusNoContent)
 }
 
 func (h *authHandler) ChangeEmail(ctx *gin.Context) {
@@ -152,7 +153,7 @@ func (h *authHandler) ChangeEmail(ctx *gin.Context) {
 		return
 	}
 
-	utils.SetResponse(ctx, "email changed successfully", nil, http.StatusNoContent)
+	utils.SetResponse(ctx, "email changed successfully", nil, http.StatusOK)
 }
 
 func (h *authHandler) ChangePassword(ctx *gin.Context) {
@@ -182,7 +183,25 @@ func (h *authHandler) ChangePassword(ctx *gin.Context) {
 		return
 	}
 
-	utils.SetResponse(ctx, "password changed successfully", nil, http.StatusNoContent)
+	utils.SetResponse(ctx, "password changed successfully", nil, http.StatusOK)
+}
+
+func (h *authHandler) ForgotPassword(ctx *gin.Context) {
+	tracer := AuthErrorTracer + ": ForgotPassword()"
+
+	var payload dto.ReqForgotPassword
+	if err := ctx.ShouldBindJSON(&payload); err != nil {
+		err := ce.NewError(ce.ErrCodeInvalidPayload, ce.ErrMsgInvalidPayload, tracer, err)
+		ctx.Error(err)
+		return
+	}
+
+	if err := h.au.ForgotPassword(ctx, payload.Email); err != nil {
+		ctx.Error(err)
+		return
+	}
+
+	utils.SetResponse(ctx, "please check your email", nil, http.StatusOK)
 }
 
 func (h *authHandler) IsEmailRegistered(ctx *gin.Context) {

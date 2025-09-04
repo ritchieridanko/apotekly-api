@@ -25,6 +25,7 @@ type AuthUsecase interface {
 	Logout(ctx context.Context, sessionToken string) (err error)
 	ChangeEmail(ctx context.Context, authID int64, newEmail string) (err error)
 	ChangePassword(ctx context.Context, authID int64, data *entities.NewPassword) (err error)
+	ForgotPassword(ctx context.Context, email string) (err error)
 	IsEmailRegistered(ctx context.Context, email string) (exists bool, err error)
 	RefreshSession(ctx context.Context, sessionToken string) (token *entities.AuthToken, err error)
 }
@@ -231,6 +232,25 @@ func (u *authUsecase) ChangePassword(ctx context.Context, authID int64, data *en
 
 		return u.ar.UpdatePassword(ctx, auth.ID, hashedNewPassword)
 	})
+}
+
+func (u *authUsecase) ForgotPassword(ctx context.Context, email string) error {
+	normalizedEmail := utils.NormalizeString(email)
+	auth, err := u.ar.GetByEmail(ctx, normalizedEmail)
+	if err != nil {
+		return err
+	}
+	if auth.Password == nil {
+		return nil
+	}
+
+	token := utils.GenerateRandomToken()
+	tokenDuration := time.Duration(config.GetPasswordResetTokenDuration()) * time.Minute
+	if err := u.cache.NewOrReplacePasswordResetToken(ctx, auth.ID, token, tokenDuration); err != nil {
+		return err
+	}
+
+	return u.email.SendPasswordResetToken(auth.Email, token)
 }
 
 func (u *authUsecase) IsEmailRegistered(ctx context.Context, email string) (bool, error) {
