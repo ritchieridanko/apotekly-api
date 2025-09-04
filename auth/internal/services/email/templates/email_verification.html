@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Email Verification</title>
+  </head>
+  <body style="font-family: Arial, sans-serif; background-color: #d6e4f5; margin: 0; padding: 40px 0;">
+    <div style="max-width: 600px; margin: 40px auto; background: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);">
+      <h2 style="color: #000000; margin-top: 0;">Verify Your Email Address</h2>
+      <p style="color: #555555; line-height: 1.6; margin: 0 0 16px 0;">
+        Welcome to Apotekly! To complete your registration, please verify your email address by clicking the button below:
+      </p>
+      <p style="margin: 20px 0;">
+        <a href="{{.URL}}"
+           target="_blank"
+           style="display: inline-block;
+                  padding: 12px 24px;
+                  background-color: #265084;
+                  color: #ffffff !important;
+                  text-decoration: none;
+                  font-weight: bold;
+                  border-radius: 4px;">
+          Verify Email
+        </a>
+      </p>
+      <p style="color: #555555; line-height: 1.6; margin: 0 0 8px 0;">
+        If the button above doesn't work, copy and paste this link into your browser:
+      </p>
+      <p style="word-break: break-all; margin: 0 0 16px 0;">
+        <a href="{{.URL}}" 
+           target="_blank" 
+           style="color: #265084; text-decoration: underline;">
+          {{.URL}}
+        </a>
+      </p>
+      <p style="color: #555555; line-height: 1.6; margin: 0;">
+        If you didn't create an account with Apotekly, you can safely ignore this email.
+      </p>
+      <div style="margin-top: 30px; font-size: 12px; color: #999999;">
+        <p style="margin: 0;">&copy; {{.Year}} Apotekly. All rights reserved.</p>
+      </div>
+    </div>
+  </body>
+</html>

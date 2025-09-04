@@ -28,6 +28,26 @@ func (es *emailService) SendPasswordResetToken(email, token string) error {
 	return es.SendEmail(message)
 }
 
+func (es *emailService) SendVerificationToken(email, token string) error {
+	tracer := EmailErrorTracer + ": SendVerificationToken()"
+
+	data := struct {
+		URL  string
+		Year int
+	}{
+		URL:  utils.GenerateURLWithTokenQuery("/auth/verify-email", token),
+		Year: time.Now().UTC().Year(),
+	}
+
+	var body bytes.Buffer
+	if err := es.template.ExecuteTemplate(&body, "email_verification.html", data); err != nil {
+		return ce.NewError(ce.ErrCodeParsing, ce.ErrMsgInternalServer, tracer, err)
+	}
+
+	message := es.BuildMessage([]string{email}, "Verify Your Email Address", body.String(), "")
+	return es.SendEmail(message)
+}
+
 func (es *emailService) SendWelcomeMessage(email, token string) error {
 	tracer := EmailErrorTracer + ": SendWelcomeMessage()"
 

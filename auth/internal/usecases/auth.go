@@ -26,6 +26,7 @@ type AuthUsecase interface {
 	ChangePassword(ctx context.Context, authID int64, data *entities.NewPassword) (err error)
 	ForgotPassword(ctx context.Context, email string) (err error)
 	ResetPassword(ctx context.Context, data *entities.PasswordReset) (err error)
+	ResendVerification(ctx context.Context, authID int64) (err error)
 	IsEmailRegistered(ctx context.Context, email string) (exists bool, err error)
 	IsPasswordResetTokenValid(ctx context.Context, token string) (exists bool, err error)
 	RefreshSession(ctx context.Context, sessionToken string) (token *entities.AuthToken, err error)
@@ -279,6 +280,26 @@ func (u *authUsecase) ResetPassword(ctx context.Context, data *entities.Password
 	}
 
 	return u.ar.UpdatePassword(ctx, authID, hashedNewPassword)
+}
+
+func (u *authUsecase) ResendVerification(ctx context.Context, authID int64) error {
+	tracer := AuthErrorTracer + ": ResendVerification()"
+
+	auth, err := u.ar.GetByID(ctx, authID)
+	if err != nil {
+		return err
+	}
+	if auth.IsVerified {
+		return ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgEmailVerified, tracer, ce.ErrEmailAlreadyVerified)
+	}
+
+	token := utils.GenerateRandomToken()
+	tokenDuration := time.Duration(config.GetEmailVerificationTokenDuration()) * time.Minute
+	if err := u.cache.NewOrReplaceVerificationToken(ctx, auth.ID, token, tokenDuration); err != nil {
+		return err
+	}
+
+	return u.email.SendVerificationToken(auth.Email, token)
 }
 
 func (u *authUsecase) IsEmailRegistered(ctx context.Context, email string) (bool, error) {

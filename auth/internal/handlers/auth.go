@@ -24,6 +24,7 @@ type AuthHandler interface {
 	ChangePassword(ctx *gin.Context)
 	ForgotPassword(ctx *gin.Context)
 	ResetPassword(ctx *gin.Context)
+	ResendVerification(ctx *gin.Context)
 	IsEmailRegistered(ctx *gin.Context)
 	IsPasswordResetTokenValid(ctx *gin.Context)
 	RefreshSession(ctx *gin.Context)
@@ -235,6 +236,24 @@ func (h *authHandler) ResetPassword(ctx *gin.Context) {
 	}
 
 	utils.SetResponse(ctx, "password changed successfully", nil, http.StatusOK)
+}
+
+func (h *authHandler) ResendVerification(ctx *gin.Context) {
+	tracer := AuthErrorTracer + ": ResendVerification()"
+
+	authID, err := utils.GetAuthIDFromContext(ctx)
+	if err != nil {
+		err := ce.NewError(ce.ErrCodeContext, ce.ErrMsgInternalServer, tracer, err)
+		ctx.Error(err)
+		return
+	}
+
+	if err := h.au.ResendVerification(ctx, authID); err != nil {
+		ctx.Error(err)
+		return
+	}
+
+	utils.SetResponse(ctx, "please check your email", nil, http.StatusOK)
 }
 
 func (h *authHandler) IsEmailRegistered(ctx *gin.Context) {

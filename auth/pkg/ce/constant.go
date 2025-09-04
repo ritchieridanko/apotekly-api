@@ -41,6 +41,7 @@ const (
 	ErrMsgAccountLocked       string = "account locked"
 	ErrMsgEmailRegistered     string = "email already registered"
 	ErrMsgEmailNotVerified    string = "email not verified"
+	ErrMsgEmailVerified       string = "email already verified"
 	ErrMsgInternalServer      string = "internal server error"
 	ErrMsgInvalidCredentials  string = "invalid credentials"
 	ErrMsgInvalidParams       string = "invalid params"
@@ -57,6 +58,7 @@ var (
 	ErrAccountLocked             error = fmt.Errorf("failed authentication multiple times, account locked")
 	ErrDBNoChange                error = fmt.Errorf("no rows affected after query execution")
 	ErrEmailAlreadyRegistered    error = fmt.Errorf("email already registered")
+	ErrEmailAlreadyVerified      error = fmt.Errorf("email already verified")
 	ErrEmailVerificationRequired error = fmt.Errorf("email verification required")
 	ErrInvalidTokenFormat        error = fmt.Errorf("invalid token format")
 	ErrInvalidType               error = fmt.Errorf("invalid return type")
