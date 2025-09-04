@@ -17,6 +17,7 @@ import (
 	"github.com/ritchieridanko/apotekly-api/auth/config"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/di"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/infras"
+	"github.com/ritchieridanko/apotekly-api/auth/internal/infras/mailer"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/validators"
 )
 
@@ -25,6 +26,7 @@ type App struct {
 	server *http.Server
 	db     *sql.DB
 	redis  *redis.Client
+	mailer *mailer.Mailer
 }
 
 func (a *App) Run() {
@@ -32,14 +34,16 @@ func (a *App) Run() {
 	config.Initialize()
 
 	// Initialize database and redis
-	db, redis := infras.Initialize()
+	db, redis, mailer := infras.Initialize()
 	a.db = db
 	a.redis = redis
+	a.mailer = mailer
 	defer a.db.Close()
 	defer a.redis.Close()
+	defer a.mailer.Close()
 
 	// Initialize dependency injections
-	router := di.SetupDependencies(a.db, a.redis)
+	router := di.SetupDependencies(a.db, a.redis, a.mailer)
 	a.router = router
 
 	// Initialize validators

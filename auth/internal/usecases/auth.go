@@ -9,6 +9,7 @@ import (
 	"github.com/ritchieridanko/apotekly-api/auth/internal/constants"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/entities"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/repos"
+	"github.com/ritchieridanko/apotekly-api/auth/internal/services/email"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/utils"
 	"github.com/ritchieridanko/apotekly-api/auth/pkg/ce"
 	"github.com/ritchieridanko/apotekly-api/auth/pkg/dbtx"
@@ -34,10 +35,11 @@ type authUsecase struct {
 	su    SessionUsecase
 	oau   OAuthUsecase
 	cache caches.Cache
+	email email.EmailService
 }
 
-func NewAuthUsecase(ar repos.AuthRepo, tx dbtx.TxManager, su SessionUsecase, oau OAuthUsecase, cache caches.Cache) AuthUsecase {
-	return &authUsecase{ar, tx, su, oau, cache}
+func NewAuthUsecase(ar repos.AuthRepo, tx dbtx.TxManager, su SessionUsecase, oau OAuthUsecase, cache caches.Cache, email email.EmailService) AuthUsecase {
+	return &authUsecase{ar, tx, su, oau, cache, email}
 }
 
 func (u *authUsecase) Register(ctx context.Context, data *entities.NewAuth, request *entities.NewRequest) (*entities.AuthToken, error) {

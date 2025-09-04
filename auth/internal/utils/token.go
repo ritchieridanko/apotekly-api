@@ -59,3 +59,7 @@ func ParseJWTToken(tokenString string) (claim *entities.Claim, err error) {
 
 	return claim, nil
 }
+
+func GenerateURLWithTokenQuery(path, token string) (url string) {
+	return config.GetClientBaseURL() + path + "?token=" + token
+}

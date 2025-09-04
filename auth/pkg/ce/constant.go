@@ -18,12 +18,14 @@ const (
 	ErrCodeDBTX           int = 50006
 	ErrCodeContext        int = 50007
 	ErrCodeParsing        int = 50008
+	ErrCodeEmail          int = 50009
 )
 
 // error tracers
 const (
 	CacheTracer string = "[CACHE(AUTH)]"
 	DBTXTracer  string = "[DBTX(AUTH)]"
+	EmailTracer string = "[EMAIL(AUTH)]"
 
 	AuthHandlerTracer    string = "[HANDLER/AUTH]"
 	AuthMiddlewareTracer string = "[MIDDLEWARE/AUTH]"
