@@ -37,13 +37,18 @@ type authUsecase struct {
 	ar    repos.AuthRepo
 	tx    dbtx.TxManager
 	su    SessionUsecase
-	oau   OAuthUsecase
 	cache caches.Cache
 	email email.EmailService
 }
 
-func NewAuthUsecase(ar repos.AuthRepo, tx dbtx.TxManager, su SessionUsecase, oau OAuthUsecase, cache caches.Cache, email email.EmailService) AuthUsecase {
-	return &authUsecase{ar, tx, su, oau, cache, email}
+func NewAuthUsecase(
+	ar repos.AuthRepo,
+	tx dbtx.TxManager,
+	su SessionUsecase,
+	cache caches.Cache,
+	email email.EmailService,
+) AuthUsecase {
+	return &authUsecase{ar, tx, su, cache, email}
 }
 
 func (u *authUsecase) Register(ctx context.Context, data *entities.NewAuth, request *entities.NewRequest) (*entities.AuthToken, error) {
@@ -203,16 +208,16 @@ func (u *authUsecase) ChangeEmail(ctx context.Context, authID int64, newEmail st
 
 	return u.tx.ReturnError(ctx, func(ctx context.Context) error {
 		// Email cannot be changed if registered with oauth
-		exists, err := u.oau.IsAuthRegistered(ctx, authID)
+		auth, err := u.ar.GetByID(ctx, authID)
 		if err != nil {
 			return err
 		}
-		if exists {
+		if auth.Password == nil {
 			return ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgOAuthEmailChange, tracer, ce.ErrOAuthEmailChange)
 		}
 
 		normalizedEmail := utils.NormalizeString(newEmail)
-		exists, err = u.ar.IsEmailRegistered(ctx, normalizedEmail)
+		exists, err := u.ar.IsEmailRegistered(ctx, normalizedEmail)
 		if err != nil {
 			return err
 		}
@@ -220,7 +225,7 @@ func (u *authUsecase) ChangeEmail(ctx context.Context, authID int64, newEmail st
 			return ce.NewError(ce.ErrCodeConflict, ce.ErrMsgEmailRegistered, tracer, ce.ErrEmailAlreadyRegistered)
 		}
 
-		return u.ar.UpdateEmail(ctx, authID, normalizedEmail)
+		return u.ar.UpdateEmail(ctx, auth.ID, normalizedEmail)
 	})
 }
 

@@ -3,8 +3,8 @@ package repos
 import (
 	"context"
 	"database/sql"
-	"errors"
 
+	"github.com/ritchieridanko/apotekly-api/auth/internal/entities"
 	"github.com/ritchieridanko/apotekly-api/auth/pkg/ce"
 	"github.com/ritchieridanko/apotekly-api/auth/pkg/dbtx"
 )
@@ -12,7 +12,7 @@ import (
 const OAuthErrorTracer = ce.OAuthRepoTracer
 
 type OAuthRepo interface {
-	IsAuthRegistered(ctx context.Context, authID int64) (exists bool, err error)
+	Create(ctx context.Context, authID int64, data *entities.NewOAuth) (oauthID int64, err error)
 }
 
 type oAuthRepo struct {
@@ -23,29 +23,22 @@ func NewOAuthRepo(db *sql.DB) OAuthRepo {
 	return &oAuthRepo{db}
 }
 
-func (r *oAuthRepo) IsAuthRegistered(ctx context.Context, authID int64) (bool, error) {
-	tracer := OAuthErrorTracer + ": IsAuthRegistered()"
+func (r *oAuthRepo) Create(ctx context.Context, authID int64, data *entities.NewOAuth) (int64, error) {
+	tracer := OAuthErrorTracer + ": Create()"
 
 	query := `
-		SELECT 1
-		FROM oauth
-		WHERE auth_id = $1 AND deleted_at IS NULL
+		INSERT INTO oauth (auth_id, provider, provider_uid)
+		VALUES ($1, $2, $3)
+		RETURNING id
 	`
 
-	if dbtx.IsInsideTx(ctx) {
-		query += " FOR UPDATE"
-	}
-
 	executor := dbtx.GetSQLExecutor(ctx, r.db)
-	row := executor.QueryRowContext(ctx, query, authID)
+	row := executor.QueryRowContext(ctx, query, authID, data.Provider, data.UID)
 
-	var exists int
-	if err := row.Scan(&exists); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return false, nil
-		}
-		return false, ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
+	var oauthID int64
+	if err := row.Scan(&oauthID); err != nil {
+		return 0, ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
 	}
 
-	return true, nil
+	return oauthID, nil
 }

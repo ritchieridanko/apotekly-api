@@ -19,6 +19,7 @@ const (
 	ErrCodeContext        int = 50007
 	ErrCodeParsing        int = 50008
 	ErrCodeEmail          int = 50009
+	ErrCodeOAuth          int = 50010
 )
 
 // error tracers
@@ -31,7 +32,9 @@ const (
 	AuthMiddlewareTracer string = "[MIDDLEWARE/AUTH]"
 	AuthRepoTracer       string = "[REPO/AUTH]"
 	AuthUsecaseTracer    string = "[USECASE/AUTH]"
+	OAuthHandlerTracer   string = "[HANDLER/OAUTH]"
 	OAuthRepoTracer      string = "[REPO/OAUTH]"
+	OAuthUsecaseTracer   string = "[USECASE/OAUTH]"
 	SessionRepoTracer    string = "[REPO/SESSION]"
 	SessionUsecaseTracer string = "[USECASE/SESSION]"
 )
@@ -63,6 +66,7 @@ var (
 	ErrInvalidTokenFormat        error = fmt.Errorf("invalid token format")
 	ErrInvalidType               error = fmt.Errorf("invalid return type")
 	ErrOAuthEmailChange          error = fmt.Errorf("oauth-linked account attempted to change email")
+	ErrOAuthEmailNotVerified     error = fmt.Errorf("unverified email attempted to authenticate by oauth")
 	ErrOAuthPasswordChange       error = fmt.Errorf("oauth-linked account attempted to change password")
 	ErrOAuthRegularLogin         error = fmt.Errorf("regular auth attempted to authenticate by oauth")
 	ErrSessionExpired            error = fmt.Errorf("session has expired")

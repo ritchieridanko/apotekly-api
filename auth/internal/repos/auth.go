@@ -15,8 +15,10 @@ const AuthErrorTracer = ce.AuthRepoTracer
 
 type AuthRepo interface {
 	Create(ctx context.Context, data *entities.NewAuth) (authID int64, err error)
+	CreateByOAuth(ctx context.Context, data *entities.NewAuth) (authID int64, err error)
 	GetByEmail(ctx context.Context, email string) (auth *entities.Auth, err error)
 	GetByID(ctx context.Context, authID int64) (auth *entities.Auth, err error)
+	GetForOAuth(ctx context.Context, email string) (exists bool, auth *entities.Auth, err error)
 	UpdateEmail(ctx context.Context, authID int64, email string) (err error)
 	UpdatePassword(ctx context.Context, authID int64, password string) (err error)
 	IsEmailRegistered(ctx context.Context, email string) (exists bool, err error)
@@ -43,6 +45,26 @@ func (r *authRepo) Create(ctx context.Context, data *entities.NewAuth) (int64, e
 
 	executor := dbtx.GetSQLExecutor(ctx, r.db)
 	row := executor.QueryRowContext(ctx, query, data.Email, data.Password, data.Role)
+
+	var authID int64
+	if err := row.Scan(&authID); err != nil {
+		return 0, ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
+	}
+
+	return authID, nil
+}
+
+func (r *authRepo) CreateByOAuth(ctx context.Context, data *entities.NewAuth) (int64, error) {
+	tracer := AuthErrorTracer + ": CreateByOAuth()"
+
+	query := `
+		INSERT INTO auth (email, role)
+		VALUES ($1, $2)
+		RETURNING id
+	`
+
+	executor := dbtx.GetSQLExecutor(ctx, r.db)
+	row := executor.QueryRowContext(ctx, query, data.Email, data.Role)
 
 	var authID int64
 	if err := row.Scan(&authID); err != nil {
@@ -104,6 +126,33 @@ func (r *authRepo) GetByID(ctx context.Context, authID int64) (*entities.Auth, e
 	}
 
 	return &auth, nil
+}
+
+func (r *authRepo) GetForOAuth(ctx context.Context, email string) (bool, *entities.Auth, error) {
+	tracer := AuthErrorTracer + ": GetForOAuth()"
+
+	query := `
+		SELECT id, email, password, is_verified, locked_until, role
+		FROM auth
+		WHERE email = $1 AND deleted_at IS NULL
+	`
+
+	if dbtx.IsInsideTx(ctx) {
+		query += " FOR UPDATE"
+	}
+
+	executor := dbtx.GetSQLExecutor(ctx, r.db)
+	row := executor.QueryRowContext(ctx, query, email)
+
+	var auth entities.Auth
+	if err := row.Scan(&auth.ID, &auth.Email, &auth.Password, &auth.IsVerified, &auth.LockedUntil, &auth.Role); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil, nil
+		}
+		return false, nil, ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
+	}
+
+	return true, &auth, nil
 }
 
 func (r *authRepo) UpdateEmail(ctx context.Context, authID int64, email string) error {

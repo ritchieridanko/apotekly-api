@@ -7,7 +7,7 @@ import (
 	"github.com/ritchieridanko/apotekly-api/auth/internal/middlewares"
 )
 
-func Initialize(auth func(*gin.RouterGroup)) *gin.Engine {
+func Initialize(auth func(*gin.RouterGroup), oauth func(*gin.RouterGroup)) *gin.Engine {
 	router := gin.New()
 
 	router.Use(gin.Logger())
@@ -24,6 +24,7 @@ func Initialize(auth func(*gin.RouterGroup)) *gin.Engine {
 	})
 
 	auth(api.Group("/auth"))
+	oauth(api.Group("/oauth"))
 
 	return router
 }

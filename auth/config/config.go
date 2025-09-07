@@ -15,6 +15,7 @@ func Initialize() {
 	LoadClientConfig()
 	LoadDBConfig()
 	LoadMailerConfig()
+	LoadOAuthConfig()
 	LoadRedisConfig()
 	LoadServerConfig()
 }
