@@ -12,11 +12,13 @@ func (es *emailService) SendPasswordResetToken(email, token string) error {
 	tracer := EmailErrorTracer + ": SendPasswordResetToken()"
 
 	data := struct {
-		URL  string
-		Year int
+		Email string
+		URL   string
+		Year  int
 	}{
-		URL:  utils.GenerateURLWithTokenQuery("/auth/reset-password", token),
-		Year: time.Now().UTC().Year(),
+		Email: email,
+		URL:   utils.GenerateURLWithTokenQuery("/auth/reset-password", token),
+		Year:  time.Now().UTC().Year(),
 	}
 
 	var body bytes.Buffer
@@ -32,11 +34,13 @@ func (es *emailService) SendVerificationToken(email, token string) error {
 	tracer := EmailErrorTracer + ": SendVerificationToken()"
 
 	data := struct {
-		URL  string
-		Year int
+		Email string
+		URL   string
+		Year  int
 	}{
-		URL:  utils.GenerateURLWithTokenQuery("/auth/verify-email", token),
-		Year: time.Now().UTC().Year(),
+		Email: email,
+		URL:   utils.GenerateURLWithTokenQuery("/auth/verify-email", token),
+		Year:  time.Now().UTC().Year(),
 	}
 
 	var body bytes.Buffer
@@ -52,11 +56,13 @@ func (es *emailService) SendWelcomeMessage(email, token string) error {
 	tracer := EmailErrorTracer + ": SendWelcomeMessage()"
 
 	data := struct {
-		URL  string
-		Year int
+		Email string
+		URL   string
+		Year  int
 	}{
-		URL:  utils.GenerateURLWithTokenQuery("/auth/verify-email", token),
-		Year: time.Now().UTC().Year(),
+		Email: email,
+		URL:   utils.GenerateURLWithTokenQuery("/auth/verify-email", token),
+		Year:  time.Now().UTC().Year(),
 	}
 
 	var body bytes.Buffer
