@@ -30,9 +30,10 @@ func SetupDependencies(db *sql.DB, redis *redis.Client, mailer *mailer.Mailer) (
 	oau := usecases.NewOAuthUsecase(oar, ar, txManager, su, cache, email)
 
 	google := oauth.InitGoogleOAuth()
+	microsoft := oauth.InitMicrosoftOAuth()
 
 	ah := handlers.NewAuthHandler(au)
-	oah := handlers.NewOAuthHandler(oau, au, google)
+	oah := handlers.NewOAuthHandler(oau, au, google, microsoft)
 
 	return routers.Initialize(routers.AuthRouters(ah), routers.OAuthRouters(oah))
 }

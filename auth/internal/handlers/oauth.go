@@ -18,16 +18,19 @@ const OAuthErrorTracer = ce.OAuthHandlerTracer
 type OAuthHandler interface {
 	GoogleOAuth(ctx *gin.Context)
 	GoogleCallback(ctx *gin.Context)
+	MicrosoftOAuth(ctx *gin.Context)
+	MicrosoftCallback(ctx *gin.Context)
 }
 
 type oauthHandler struct {
-	oau    usecases.OAuthUsecase
-	au     usecases.AuthUsecase
-	google *oauth2.Config
+	oau       usecases.OAuthUsecase
+	au        usecases.AuthUsecase
+	google    *oauth2.Config
+	microsoft *oauth2.Config
 }
 
-func NewOAuthHandler(oau usecases.OAuthUsecase, au usecases.AuthUsecase, google *oauth2.Config) OAuthHandler {
-	return &oauthHandler{oau, au, google}
+func NewOAuthHandler(oau usecases.OAuthUsecase, au usecases.AuthUsecase, google *oauth2.Config, microsoft *oauth2.Config) OAuthHandler {
+	return &oauthHandler{oau, au, google, microsoft}
 }
 
 func (h *oauthHandler) GoogleOAuth(ctx *gin.Context) {
@@ -38,7 +41,7 @@ func (h *oauthHandler) GoogleOAuth(ctx *gin.Context) {
 func (h *oauthHandler) GoogleCallback(ctx *gin.Context) {
 	tracer := OAuthErrorTracer + ": GoogleCallback()"
 
-	var params dto.ReqOAuthByGoogle
+	var params dto.ReqOAuth
 	if err := ctx.ShouldBindQuery(&params); err != nil {
 		err := ce.NewError(ce.ErrCodeInvalidParams, ce.ErrMsgInvalidParams, tracer, err)
 		ctx.Error(err)
@@ -52,7 +55,7 @@ func (h *oauthHandler) GoogleCallback(ctx *gin.Context) {
 		return
 	}
 
-	userInfo, err := utils.GetUserInfoFromGoogle(ctx, token, h.google)
+	user, err := utils.GetUserFromGoogle(ctx, token, h.google)
 	if err != nil {
 		err := ce.NewError(ce.ErrCodeOAuth, ce.ErrMsgInternalServer, tracer, err)
 		ctx.Error(err)
@@ -61,9 +64,67 @@ func (h *oauthHandler) GoogleCallback(ctx *gin.Context) {
 
 	data := entities.NewOAuth{
 		Provider:   constants.OAuthProviderGoogle,
-		UID:        userInfo.ID,
-		Email:      userInfo.Email,
-		IsVerified: userInfo.IsVerified,
+		UID:        user.ID,
+		Email:      user.Email,
+		IsVerified: user.IsVerified,
+	}
+
+	request := entities.NewRequest{
+		UserAgent: ctx.Request.UserAgent(),
+		IPAddress: ctx.ClientIP(),
+	}
+
+	authToken, err := h.oau.Authenticate(ctx, &data, &request)
+	if err != nil {
+		ctx.Error(err)
+		return
+	}
+
+	utils.SetSessionCookie(ctx, authToken.SessionToken)
+	url := utils.GenerateURLWithTokenQuery("/auth/oauth-callback", authToken.AccessToken)
+
+	ctx.Redirect(http.StatusTemporaryRedirect, url)
+}
+
+func (h *oauthHandler) MicrosoftOAuth(ctx *gin.Context) {
+	url := h.microsoft.AuthCodeURL("random-state-string", oauth2.AccessTypeOffline)
+	ctx.Redirect(http.StatusTemporaryRedirect, url)
+}
+
+func (h *oauthHandler) MicrosoftCallback(ctx *gin.Context) {
+	tracer := OAuthErrorTracer + ": MicrosoftCallback()"
+
+	var params dto.ReqOAuth
+	if err := ctx.ShouldBindQuery(&params); err != nil {
+		err := ce.NewError(ce.ErrCodeInvalidParams, ce.ErrMsgInvalidParams, tracer, err)
+		ctx.Error(err)
+		return
+	}
+
+	token, err := h.microsoft.Exchange(ctx, params.Code)
+	if err != nil {
+		err := ce.NewError(ce.ErrCodeOAuth, ce.ErrMsgInternalServer, tracer, err)
+		ctx.Error(err)
+		return
+	}
+
+	user, err := utils.GetUserFromMicrosoft(ctx, token.AccessToken)
+	if err != nil {
+		err := ce.NewError(ce.ErrCodeOAuth, ce.ErrMsgInternalServer, tracer, err)
+		ctx.Error(err)
+		return
+	}
+
+	email := user.Mail
+	if email == "" {
+		email = user.UserPrincipalName
+	}
+
+	data := entities.NewOAuth{
+		Provider:   constants.OAuthProviderMicrosoft,
+		UID:        user.ID,
+		Email:      email,
+		IsVerified: true,
 	}
 
 	request := entities.NewRequest{

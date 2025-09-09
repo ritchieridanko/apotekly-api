@@ -10,5 +10,9 @@ func OAuthRouters(h handlers.OAuthHandler) func(*gin.RouterGroup) {
 		google := rg.Group("/google")
 		google.GET("", h.GoogleOAuth)
 		google.GET("/callback", h.GoogleCallback)
+
+		microsoft := rg.Group("/microsoft")
+		microsoft.GET("", h.MicrosoftOAuth)
+		microsoft.GET("/callback", h.MicrosoftCallback)
 	}
 }
