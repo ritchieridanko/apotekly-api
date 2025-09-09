@@ -78,7 +78,7 @@ func (h *oauthHandler) GoogleCallback(ctx *gin.Context) {
 	}
 
 	utils.SetSessionCookie(ctx, authToken.SessionToken)
-	url := utils.GenerateURLWithTokenQuery("/oauth/google/callback", authToken.AccessToken)
+	url := utils.GenerateURLWithTokenQuery("/auth/oauth-callback", authToken.AccessToken)
 
 	ctx.Redirect(http.StatusTemporaryRedirect, url)
 }
