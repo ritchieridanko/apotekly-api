@@ -11,9 +11,14 @@ import (
 )
 
 func NewConnection() (redis *r.Client, err error) {
+	password := config.GetRedisPass()
+	if password == "" {
+		log.Println("WARNING: connecting to redis with no password")
+	}
+
 	client := r.NewClient(&r.Options{
 		Addr:     fmt.Sprintf("%s:%s", config.GetRedisHost(), config.GetRedisPort()),
-		Password: config.GetRedisPass(),
+		Password: password,
 	})
 
 	// Test the connection
