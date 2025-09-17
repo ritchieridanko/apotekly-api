@@ -11,12 +11,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gin-gonic/gin/binding"
-	"github.com/go-playground/validator/v10"
 	"github.com/ritchieridanko/apotekly-api/user/config"
 	"github.com/ritchieridanko/apotekly-api/user/internal/di"
 	"github.com/ritchieridanko/apotekly-api/user/internal/infras"
-	"github.com/ritchieridanko/apotekly-api/user/internal/validators"
 )
 
 type App struct {
@@ -30,36 +27,30 @@ func New() *App {
 }
 
 func (a *App) Run() {
-	// Initialize .env configurations
+	// initialize configurations
 	config.Initialize()
 
-	// Initialize database
-	db := infras.Initialize()
+	// initialize infrastructures
+	db, tracer := infras.Initialize()
 	a.db = db
 	defer a.db.Close()
+	defer tracer.Cleanup()
 
-	// Initialize dependency injections
+	// initialize dependencies
 	router := di.SetupDependencies(a.db)
 	a.router = router
 
-	// Initialize validators
-	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
-		if err := validators.Initialize(v); err != nil {
-			log.Fatalln("FATAL: failed to initialize validators:", err)
-		}
-	}
-
-	// Create an HTTP server
+	// create HTTP server
 	a.server = &http.Server{
-		Addr:    config.GetServerBaseURL(),
+		Addr:    config.ServerGetBaseURL(),
 		Handler: a.router,
 	}
 
-	// Start the server
+	// start server
 	go func() {
-		log.Println("Starting server on", config.GetServerBaseURL())
+		log.Println("SUCCESS -> started server on:", config.ServerGetBaseURL())
 		if err := a.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalln("FATAL: failed to start server:", err)
+			log.Fatalln("FATAL -> failed to start server:", err)
 		}
 	}()
 
@@ -68,12 +59,12 @@ func (a *App) Run() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("Shutting down server...")
+	log.Println("SHUTTING DOWN SERVER...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(config.GetServerTimeout())*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(config.ServerGetTimeout())*time.Second)
 	defer cancel()
 
 	if err := a.server.Shutdown(ctx); err != nil {
-		log.Println("Server forced to shutdown:", err)
+		log.Println("WARNING -> server forced to shutdown:", err)
 	}
 }

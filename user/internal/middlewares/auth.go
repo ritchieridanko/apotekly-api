@@ -1,40 +1,41 @@
 package middlewares
 
 import (
+	"context"
 	"errors"
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/ritchieridanko/apotekly-api/user/internal/ce"
 	"github.com/ritchieridanko/apotekly-api/user/internal/constants"
 	"github.com/ritchieridanko/apotekly-api/user/internal/utils"
-	"github.com/ritchieridanko/apotekly-api/user/pkg/ce"
+	"go.opentelemetry.io/otel"
 )
 
-const AuthErrorTracer = ce.AuthMiddlewareTracer
+const AuthErrorTracer string = "auth.middleware"
 
 func Authenticate() gin.HandlerFunc {
-	tracer := AuthErrorTracer + ": Authenticate()"
-
 	return func(ctx *gin.Context) {
+		ctxWithTracer, span := otel.Tracer(AuthErrorTracer).Start(ctx.Request.Context(), "Authenticate")
+		defer span.End()
+
 		authHeader := ctx.GetHeader("Authorization")
 		if len(authHeader) == 0 {
-			err := ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgUnauthenticated, tracer, ce.ErrTokenNotFound)
+			err := ce.NewError(span, ce.CodeAuthUnauthenticated, ce.MsgUnauthenticated, errors.New("authorization header is missing"))
 			ctx.Error(err)
 			ctx.Abort()
 			return
 		}
 
-		authLength := 2
 		authSlice := strings.Split(authHeader, " ")
-		if len(authSlice) != authLength {
-			err := ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgUnauthenticated, tracer, ce.ErrInvalidTokenFormat)
+		if len(authSlice) != 2 {
+			err := ce.NewError(span, ce.CodeAuthTokenMalformed, ce.MsgUnauthenticated, errors.New("authorization header format is invalid"))
 			ctx.Error(err)
 			ctx.Abort()
 			return
 		}
 		if authType := strings.ToLower(authSlice[0]); authType != "bearer" {
-			err := ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgUnauthenticated, tracer, ce.ErrInvalidTokenFormat)
+			err := ce.NewError(span, ce.CodeAuthTokenMalformed, ce.MsgUnauthenticated, errors.New("authorization type must be Bearer"))
 			ctx.Error(err)
 			ctx.Abort()
 			return
@@ -43,12 +44,13 @@ func Authenticate() gin.HandlerFunc {
 		token := authSlice[1]
 		claim, err := utils.ParseJWTToken(token)
 		if err != nil {
-			err := ce.NewError(ce.ErrCodeParsing, ce.ErrMsgInternalServer, tracer, err)
-			if errors.Is(err, jwt.ErrTokenExpired) {
-				err = ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgInvalidCredentials, tracer, jwt.ErrTokenExpired)
-			}
-			if errors.Is(err, jwt.ErrTokenMalformed) {
-				err = ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgInvalidCredentials, tracer, jwt.ErrTokenMalformed)
+			switch {
+			case errors.Is(err, ce.ErrTokenExpired):
+				err = ce.NewError(span, ce.CodeAuthTokenExpired, ce.MsgUnauthenticated, err)
+			case errors.Is(err, ce.ErrTokenMalformed):
+				err = ce.NewError(span, ce.CodeAuthTokenMalformed, ce.MsgUnauthenticated, err)
+			default:
+				err = ce.NewError(span, ce.CodeAuthTokenParsing, ce.MsgInternalServer, err)
 			}
 
 			ctx.Error(err)
@@ -56,16 +58,18 @@ func Authenticate() gin.HandlerFunc {
 			return
 		}
 
-		if !utils.IsAudienceValid(claim.Audience) {
-			err := ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgInvalidCredentials, tracer, ce.ErrInvalidAudience)
+		if !utils.IsInTokenAudience(claim.Audience) {
+			err := ce.NewError(span, ce.CodeAuthAudienceNotFound, ce.MsgUnauthenticated, errors.New("service not found in token audience"))
 			ctx.Error(err)
 			ctx.Abort()
 			return
 		}
 
-		ctx.Set(constants.RequestKeyAuthID, claim.AuthID)
-		ctx.Set(constants.RequestKeyRoleID, claim.RoleID)
-		ctx.Set(constants.RequestKeyIsVerified, claim.IsVerified)
+		ctxWithTracer = context.WithValue(ctxWithTracer, constants.CtxKeyAuthID, claim.AuthID)
+		ctxWithTracer = context.WithValue(ctxWithTracer, constants.CtxKeyRoleID, claim.RoleID)
+		ctxWithTracer = context.WithValue(ctxWithTracer, constants.CtxKeyIsVerified, claim.IsVerified)
+
+		ctx.Request = ctx.Request.WithContext(ctxWithTracer)
 		ctx.Next()
 	}
 }

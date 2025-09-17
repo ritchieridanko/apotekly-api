@@ -2,39 +2,40 @@ package repos
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 
+	"github.com/ritchieridanko/apotekly-api/user/internal/ce"
 	"github.com/ritchieridanko/apotekly-api/user/internal/entities"
-	"github.com/ritchieridanko/apotekly-api/user/pkg/ce"
-	"github.com/ritchieridanko/apotekly-api/user/pkg/dbtx"
+	"github.com/ritchieridanko/apotekly-api/user/internal/services/db"
+	"go.opentelemetry.io/otel"
 )
 
-const UserErrorTracer = ce.UserRepoTracer
+const UserErrorTracer string = "user.repo"
 
 type UserRepo interface {
-	Create(ctx context.Context, authID int64, data *entities.NewUser) (err error)
+	Create(ctx context.Context, authID int64, data *entities.NewUser) (user *entities.User, err error)
 	HasUser(ctx context.Context, authID int64) (exists bool, err error)
 }
 
 type userRepo struct {
-	db *sql.DB
+	database db.Database
 }
 
-func NewUserRepo(db *sql.DB) UserRepo {
-	return &userRepo{db}
+func NewUserRepo(database db.Database) UserRepo {
+	return &userRepo{database}
 }
 
-func (r *userRepo) Create(ctx context.Context, authID int64, data *entities.NewUser) error {
-	tracer := UserErrorTracer + ": Create()"
+func (r *userRepo) Create(ctx context.Context, authID int64, data *entities.NewUser) (*entities.User, error) {
+	ctx, span := otel.Tracer(UserErrorTracer).Start(ctx, "Create")
+	defer span.End()
 
 	query := `
 		INSERT INTO users (auth_id, user_id, name, bio, sex, birthdate, phone, profile_picture)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		RETURNING user_id, name, bio, sex, birthdate, phone, profile_picture
 	`
 
-	executor := dbtx.GetSQLExecutor(ctx, r.db)
-	result, err := executor.ExecContext(
+	row := r.database.QueryRow(
 		ctx,
 		query,
 		authID,
@@ -46,39 +47,42 @@ func (r *userRepo) Create(ctx context.Context, authID int64, data *entities.NewU
 		data.Phone,
 		data.ProfilePicture,
 	)
+
+	var user entities.User
+	err := row.Scan(
+		&user.UserID,
+		&user.Name,
+		&user.Bio,
+		&user.Sex,
+		&user.Birthdate,
+		&user.Phone,
+		&user.ProfilePicture,
+	)
 	if err != nil {
-		return ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
+		return nil, ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
 	}
 
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
-	}
-	if rowsAffected == 0 {
-		return ce.NewError(ce.ErrCodeDBNoChange, ce.ErrMsgInternalServer, tracer, ce.ErrDBNoChange)
-	}
-
-	return nil
+	return &user, nil
 }
 
 func (r *userRepo) HasUser(ctx context.Context, authID int64) (bool, error) {
-	tracer := UserErrorTracer + ": HasUser()"
+	ctx, span := otel.Tracer(UserErrorTracer).Start(ctx, "HasUser")
+	defer span.End()
 
-	query := "SELECT 1 FROM users WHERE auth_id = $1"
+	query := "SELECT 1 FROM users WHERE auth_id = $1 AND deleted_at IS NULL"
 
-	if dbtx.IsInsideTx(ctx) {
+	if r.database.IsWithinTx(ctx) {
 		query += " FOR UPDATE"
 	}
 
-	executor := dbtx.GetSQLExecutor(ctx, r.db)
-	row := executor.QueryRowContext(ctx, query, authID)
+	row := r.database.QueryRow(ctx, query, authID)
 
 	var exists int
 	if err := row.Scan(&exists); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, ce.ErrQueryNoRows) {
 			return false, nil
 		}
-		return false, ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
+		return false, ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
 	}
 
 	return true, nil

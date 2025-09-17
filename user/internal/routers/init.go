@@ -5,11 +5,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ritchieridanko/apotekly-api/user/internal/middlewares"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
 func Initialize(user func(*gin.RouterGroup)) *gin.Engine {
 	router := gin.New()
 
+	router.Use(otelgin.Middleware("user.service"))
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 	router.Use(middlewares.ErrorHandler())

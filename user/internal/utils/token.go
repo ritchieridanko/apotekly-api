@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/ritchieridanko/apotekly-api/user/config"
@@ -13,7 +13,7 @@ func ParseJWTToken(tokenString string) (claim *entities.Claim, err error) {
 		tokenString,
 		&entities.Claim{},
 		func(t *jwt.Token) (interface{}, error) {
-			return []byte(config.GetJWTSecret()), nil
+			return []byte(config.AuthGetJWTSecret()), nil
 		},
 	)
 	if err != nil {
@@ -22,15 +22,15 @@ func ParseJWTToken(tokenString string) (claim *entities.Claim, err error) {
 
 	claim, ok := token.Claims.(*entities.Claim)
 	if !ok {
-		return nil, fmt.Errorf("invalid jwt token type")
+		return nil, errors.New("invalid jwt token claim")
 	}
 
 	return claim, nil
 }
 
-func IsAudienceValid(audiences jwt.ClaimStrings) (isValid bool) {
+func IsInTokenAudience(audiences jwt.ClaimStrings) (isIn bool) {
 	for _, audience := range audiences {
-		if audience == config.GetAppName() {
+		if audience == config.AppGetName() {
 			return true
 		}
 	}

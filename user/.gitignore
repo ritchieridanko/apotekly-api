@@ -1,1 +1,13 @@
 .env
+
+# Binaries
+/user/cmd/server/server
+/user/cmd/migrate/migrate
+
+# IDE/editor files
+.vscode/
+.idea/
+
+# Go build cache
+/bin/
+*.out

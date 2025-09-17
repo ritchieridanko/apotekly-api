@@ -7,14 +7,15 @@ import (
 	"github.com/ritchieridanko/apotekly-api/user/internal/handlers"
 	"github.com/ritchieridanko/apotekly-api/user/internal/repos"
 	"github.com/ritchieridanko/apotekly-api/user/internal/routers"
+	"github.com/ritchieridanko/apotekly-api/user/internal/services/db"
 	"github.com/ritchieridanko/apotekly-api/user/internal/usecases"
-	"github.com/ritchieridanko/apotekly-api/user/pkg/dbtx"
 )
 
-func SetupDependencies(db *sql.DB) (router *gin.Engine) {
-	ur := repos.NewUserRepo(db)
+func SetupDependencies(dbInstance *sql.DB) (router *gin.Engine) {
+	database := db.NewDatabase(dbInstance)
+	txManager := db.NewTxManager(dbInstance)
 
-	txManager := dbtx.NewTxManager(db)
+	ur := repos.NewUserRepo(database)
 
 	uu := usecases.NewUserUsecase(ur, txManager)
 

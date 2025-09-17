@@ -6,28 +6,27 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ritchieridanko/apotekly-api/user/internal/ce"
 	"github.com/ritchieridanko/apotekly-api/user/internal/utils"
-	"github.com/ritchieridanko/apotekly-api/user/pkg/ce"
 )
 
 func ErrorHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		ctx.Next()
 
-		if len(ctx.Errors) == 0 {
+		errs := ctx.Errors
+		if len(errs) == 0 {
 			return
 		}
 
-		err := ctx.Errors[0]
-
-		var cErr *ce.Error
-		if errors.As(err.Err, &cErr) {
-			log.Printf("ERROR: (%d) => %v", cErr.Code, cErr.Err)
-			utils.SetErrorResponse(ctx, cErr.Message, ce.MapToExternalErrorCode(cErr.Code))
+		var customErr *ce.Error
+		if errors.As(errs[0].Err, &customErr) {
+			log.Printf("ERROR -> %s: %s", customErr.Code, customErr.Err)
+			utils.SetErrorResponse(ctx, customErr.Message, customErr.ToExternalErrorCode())
 			return
 		}
 
-		log.Println("ERROR:", err.Err)
-		utils.SetErrorResponse(ctx, ce.ErrMsgInternalServer, http.StatusInternalServerError)
+		log.Println("ERROR ->", errs[0].Err)
+		utils.SetErrorResponse(ctx, ce.MsgInternalServer, http.StatusInternalServerError)
 	}
 }

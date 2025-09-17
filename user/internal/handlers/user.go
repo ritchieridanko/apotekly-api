@@ -1,20 +1,22 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ritchieridanko/apotekly-api/user/internal/ce"
 	"github.com/ritchieridanko/apotekly-api/user/internal/dto"
 	"github.com/ritchieridanko/apotekly-api/user/internal/entities"
 	"github.com/ritchieridanko/apotekly-api/user/internal/usecases"
 	"github.com/ritchieridanko/apotekly-api/user/internal/utils"
-	"github.com/ritchieridanko/apotekly-api/user/pkg/ce"
+	"go.opentelemetry.io/otel"
 )
 
 // TODO
 // (1): Implement Image Upload to Cloud
 
-const UserErrorTracer = ce.UserHandlerTracer
+const UserErrorTracer string = "user.handler"
 
 type UserHandler interface {
 	NewUser(ctx *gin.Context)
@@ -29,18 +31,25 @@ func NewUserHandler(uu usecases.UserUsecase) UserHandler {
 }
 
 func (h *userHandler) NewUser(ctx *gin.Context) {
-	tracer := UserErrorTracer + ": NewUser()"
+	ctxWithTracer, span := otel.Tracer(UserErrorTracer).Start(ctx.Request.Context(), "NewUser")
+	defer span.End()
 
-	authID, err := utils.GetAuthIDFromContext(ctx)
+	authID, err := utils.ContextGetAuthID(ctxWithTracer)
 	if err != nil {
-		err := ce.NewError(ce.ErrCodeContext, ce.ErrMsgInternalServer, tracer, err)
+		err := ce.NewError(span, ce.CodeContextValueNotFound, ce.MsgInternalServer, err)
 		ctx.Error(err)
 		return
 	}
 
 	var payload dto.ReqNewUser
 	if err := ctx.ShouldBindJSON(&payload); err != nil {
-		err := ce.NewError(ce.ErrCodeInvalidPayload, ce.ErrMsgInvalidPayload, tracer, err)
+		err := ce.NewError(span, ce.CodeInvalidPayload, ce.MsgInvalidPayload, err)
+		ctx.Error(err)
+		return
+	}
+
+	if !utils.ValidateNewUser(payload) {
+		err := ce.NewError(span, ce.CodeInvalidPayload, ce.MsgInvalidPayload, errors.New("invalid payload"))
 		ctx.Error(err)
 		return
 	}
@@ -55,10 +64,21 @@ func (h *userHandler) NewUser(ctx *gin.Context) {
 
 	// TODO (1)
 
-	if err := h.uu.NewUser(ctx, authID, &data); err != nil {
+	user, err := h.uu.NewUser(ctxWithTracer, authID, &data)
+	if err != nil {
 		ctx.Error(err)
 		return
 	}
 
-	utils.SetResponse(ctx, "user created successfully", nil, http.StatusCreated)
+	response := dto.RespNewUser{
+		UserID:         user.UserID,
+		Name:           user.Name,
+		Bio:            user.Bio,
+		Sex:            user.Sex,
+		Birthdate:      user.Birthdate,
+		Phone:          user.Phone,
+		ProfilePicture: user.ProfilePicture,
+	}
+
+	utils.SetResponse(ctx, "User created successfully", response, http.StatusCreated)
 }

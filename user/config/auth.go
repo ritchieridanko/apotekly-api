@@ -1,17 +1,17 @@
 package config
 
 type authConfig struct {
-	jwtSecret string
+	JWTSecret string
 }
 
 var authCfg *authConfig
 
-func LoadAuthConfig() {
+func loadAuthConfig() {
 	authCfg = &authConfig{
-		jwtSecret: GetEnv("JWT_SECRET"),
+		JWTSecret: getEnv("JWT_SECRET"),
 	}
 }
 
-func GetJWTSecret() (secret string) {
-	return authCfg.jwtSecret
+func AuthGetJWTSecret() (secret string) {
+	return authCfg.JWTSecret
 }

@@ -1,29 +1,29 @@
 package config
 
 type appConfig struct {
-	appName        string
-	appVersion     string
-	appDescription string
+	Name        string
+	Version     string
+	Description string
 }
 
 var appCfg *appConfig
 
-func LoadAppConfig() {
+func loadAppConfig() {
 	appCfg = &appConfig{
-		appName:        GetEnv("APP_NAME"),
-		appVersion:     GetEnv("APP_VERSION"),
-		appDescription: GetEnv("APP_DESCRIPTION"),
+		Name:        getEnv("APP_NAME"),
+		Version:     getEnv("APP_VERSION"),
+		Description: getEnv("APP_DESCRIPTION"),
 	}
 }
 
-func GetAppName() (name string) {
-	return appCfg.appName
+func AppGetName() (name string) {
+	return appCfg.Name
 }
 
-func GetAppVersion() (version string) {
-	return appCfg.appVersion
+func AppGetVersion() (version string) {
+	return appCfg.Version
 }
 
-func GetAppDescription() (description string) {
-	return appCfg.appDescription
+func AppGetDescription() (description string) {
+	return appCfg.Description
 }
