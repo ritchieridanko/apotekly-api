@@ -7,65 +7,65 @@ import (
 )
 
 type authConfig struct {
-	bcryptCost                     int
-	jwtIssuer                      string
-	jwtAudiences                   []string
-	jwtSecret                      string
-	jwtDuration                    int
-	sessionDuration                int
-	passwordResetTokenDuration     int
-	emailVerificationTokenDuration int
-	authLockDuration               int
+	BCryptCost          int
+	JWTIssuer           string
+	JWTAudiences        []string
+	JWTSecret           string
+	JWTDuration         int
+	SessionDuration     int
+	ResetTokenDuration  int
+	VerifyTokenDuration int
+	LockDuration        int
 }
 
 var authCfg *authConfig
 
-func LoadAuthConfig() {
+func loadAuthConfig() {
 	authCfg = &authConfig{
-		bcryptCost:                     GetNumberEnvWithFallback("BCRYPT_COST", bcrypt.DefaultCost),
-		jwtIssuer:                      GetEnv("JWT_ISSUER"),
-		jwtAudiences:                   strings.Split(GetEnv("JWT_AUDIENCES"), ","),
-		jwtSecret:                      GetEnv("JWT_SECRET"),
-		jwtDuration:                    GetNumberEnv("JWT_DURATION"),
-		sessionDuration:                GetNumberEnv("SESSION_DURATION"),
-		passwordResetTokenDuration:     GetNumberEnv("PASSWORD_RESET_TOKEN_DURATION"),
-		emailVerificationTokenDuration: GetNumberEnv("EMAIL_VERIFICATION_TOKEN_DURATION"),
-		authLockDuration:               GetNumberEnv("AUTH_LOCK_DURATION"),
+		BCryptCost:          getNumberEnvWithFallback("BCRYPT_COST", bcrypt.DefaultCost),
+		JWTIssuer:           getEnv("JWT_ISSUER"),
+		JWTAudiences:        strings.Split(getEnv("JWT_AUDIENCES"), ","),
+		JWTSecret:           getEnv("JWT_SECRET"),
+		JWTDuration:         getNumberEnv("JWT_DURATION"),
+		SessionDuration:     getNumberEnv("SESSION_DURATION"),
+		ResetTokenDuration:  getNumberEnv("RESET_TOKEN_DURATION"),
+		VerifyTokenDuration: getNumberEnv("VERIFY_TOKEN_DURATION"),
+		LockDuration:        getNumberEnv("LOCK_DURATION"),
 	}
 }
 
-func GetBCryptCost() (cost int) {
-	return authCfg.bcryptCost
+func AuthGetBCryptCost() (cost int) {
+	return authCfg.BCryptCost
 }
 
-func GetJWTIssuer() (issuer string) {
-	return authCfg.jwtIssuer
+func AuthGetJWTIssuer() (issuer string) {
+	return authCfg.JWTIssuer
 }
 
-func GetJWTAudiences() (audiences []string) {
-	return authCfg.jwtAudiences
+func AuthGetJWTAudiences() (audiences []string) {
+	return authCfg.JWTAudiences
 }
 
-func GetJWTSecret() (secret string) {
-	return authCfg.jwtSecret
+func AuthGetJWTSecret() (secret string) {
+	return authCfg.JWTSecret
 }
 
-func GetJWTDuration() (duration int) {
-	return authCfg.jwtDuration
+func AuthGetJWTDuration() (duration int) {
+	return authCfg.JWTDuration
 }
 
-func GetSessionDuration() (duration int) {
-	return authCfg.sessionDuration
+func AuthGetSessionDuration() (duration int) {
+	return authCfg.SessionDuration
 }
 
-func GetPasswordResetTokenDuration() (duration int) {
-	return authCfg.passwordResetTokenDuration
+func AuthGetResetTokenDuration() (duration int) {
+	return authCfg.ResetTokenDuration
 }
 
-func GetEmailVerificationTokenDuration() (duration int) {
-	return authCfg.emailVerificationTokenDuration
+func AuthGetVerifyTokenDuration() (duration int) {
+	return authCfg.VerifyTokenDuration
 }
 
-func GetAuthLockDuration() (duration int) {
-	return authCfg.authLockDuration
+func AuthGetLockDuration() (duration int) {
+	return authCfg.LockDuration
 }

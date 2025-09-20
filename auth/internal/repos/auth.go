@@ -2,16 +2,16 @@ package repos
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"time"
 
+	"github.com/ritchieridanko/apotekly-api/auth/internal/ce"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/entities"
-	"github.com/ritchieridanko/apotekly-api/auth/pkg/ce"
-	"github.com/ritchieridanko/apotekly-api/auth/pkg/dbtx"
+	"github.com/ritchieridanko/apotekly-api/auth/internal/services/db"
+	"go.opentelemetry.io/otel"
 )
 
-const AuthErrorTracer = ce.AuthRepoTracer
+const authErrorTracer string = "repo.auth"
 
 type AuthRepo interface {
 	Create(ctx context.Context, data *entities.NewAuth) (authID int64, err error)
@@ -27,15 +27,16 @@ type AuthRepo interface {
 }
 
 type authRepo struct {
-	db *sql.DB
+	database db.DBService
 }
 
-func NewAuthRepo(db *sql.DB) AuthRepo {
-	return &authRepo{db}
+func NewAuthRepo(database db.DBService) AuthRepo {
+	return &authRepo{database}
 }
 
 func (r *authRepo) Create(ctx context.Context, data *entities.NewAuth) (int64, error) {
-	tracer := AuthErrorTracer + ": Create()"
+	ctx, span := otel.Tracer(authErrorTracer).Start(ctx, "Create")
+	defer span.End()
 
 	query := `
 		INSERT INTO auth (email, password, role)
@@ -43,19 +44,19 @@ func (r *authRepo) Create(ctx context.Context, data *entities.NewAuth) (int64, e
 		RETURNING id
 	`
 
-	executor := dbtx.GetSQLExecutor(ctx, r.db)
-	row := executor.QueryRowContext(ctx, query, data.Email, data.Password, data.Role)
+	row := r.database.QueryRow(ctx, query, data.Email, data.Password, data.Role)
 
 	var authID int64
 	if err := row.Scan(&authID); err != nil {
-		return 0, ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
+		return 0, ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
 	}
 
 	return authID, nil
 }
 
 func (r *authRepo) CreateByOAuth(ctx context.Context, data *entities.NewAuth) (int64, error) {
-	tracer := AuthErrorTracer + ": CreateByOAuth()"
+	ctx, span := otel.Tracer(authErrorTracer).Start(ctx, "CreateByOAuth")
+	defer span.End()
 
 	query := `
 		INSERT INTO auth (email, role)
@@ -63,100 +64,97 @@ func (r *authRepo) CreateByOAuth(ctx context.Context, data *entities.NewAuth) (i
 		RETURNING id
 	`
 
-	executor := dbtx.GetSQLExecutor(ctx, r.db)
-	row := executor.QueryRowContext(ctx, query, data.Email, data.Role)
+	row := r.database.QueryRow(ctx, query, data.Email, data.Role)
 
 	var authID int64
 	if err := row.Scan(&authID); err != nil {
-		return 0, ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
+		return 0, ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
 	}
 
 	return authID, nil
 }
 
 func (r *authRepo) GetByEmail(ctx context.Context, email string) (*entities.Auth, error) {
-	tracer := AuthErrorTracer + ": GetByEmail()"
+	ctx, span := otel.Tracer(authErrorTracer).Start(ctx, "GetByEmail")
+	defer span.End()
 
 	query := `
 		SELECT id, email, password, is_verified, locked_until, role
 		FROM auth
 		WHERE email = $1 AND deleted_at IS NULL
 	`
-
-	if dbtx.IsInsideTx(ctx) {
+	if r.database.IsWithinTx(ctx) {
 		query += " FOR UPDATE"
 	}
 
-	executor := dbtx.GetSQLExecutor(ctx, r.db)
-	row := executor.QueryRowContext(ctx, query, email)
+	row := r.database.QueryRow(ctx, query, email)
 
 	var auth entities.Auth
 	if err := row.Scan(&auth.ID, &auth.Email, &auth.Password, &auth.IsVerified, &auth.LockedUntil, &auth.Role); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgInvalidCredentials, tracer, err)
+		if errors.Is(err, ce.ErrDBQueryNoRows) {
+			return nil, ce.NewError(span, ce.CodeAuthNotFound, ce.MsgInvalidCredentials, err)
 		}
-		return nil, ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
+		return nil, ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
 	}
 
 	return &auth, nil
 }
 
 func (r *authRepo) GetByID(ctx context.Context, authID int64) (*entities.Auth, error) {
-	tracer := AuthErrorTracer + ": GetByID()"
+	ctx, span := otel.Tracer(authErrorTracer).Start(ctx, "GetByID")
+	defer span.End()
 
 	query := `
 		SELECT id, email, password, is_verified, locked_until, role
 		FROM auth
 		WHERE id = $1 AND deleted_at IS NULL
 	`
-
-	if dbtx.IsInsideTx(ctx) {
+	if r.database.IsWithinTx(ctx) {
 		query += " FOR UPDATE"
 	}
 
-	executor := dbtx.GetSQLExecutor(ctx, r.db)
-	row := executor.QueryRowContext(ctx, query, authID)
+	row := r.database.QueryRow(ctx, query, authID)
 
 	var auth entities.Auth
 	if err := row.Scan(&auth.ID, &auth.Email, &auth.Password, &auth.IsVerified, &auth.LockedUntil, &auth.Role); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgInvalidCredentials, tracer, err)
+		if errors.Is(err, ce.ErrDBQueryNoRows) {
+			return nil, ce.NewError(span, ce.CodeAuthNotFound, ce.MsgInvalidCredentials, err)
 		}
-		return nil, ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
+		return nil, ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
 	}
 
 	return &auth, nil
 }
 
 func (r *authRepo) GetForOAuth(ctx context.Context, email string) (bool, *entities.Auth, error) {
-	tracer := AuthErrorTracer + ": GetForOAuth()"
+	ctx, span := otel.Tracer(authErrorTracer).Start(ctx, "GetForOAuth")
+	defer span.End()
 
 	query := `
 		SELECT id, email, password, is_verified, locked_until, role
 		FROM auth
 		WHERE email = $1 AND deleted_at IS NULL
 	`
-
-	if dbtx.IsInsideTx(ctx) {
+	if r.database.IsWithinTx(ctx) {
 		query += " FOR UPDATE"
 	}
 
-	executor := dbtx.GetSQLExecutor(ctx, r.db)
-	row := executor.QueryRowContext(ctx, query, email)
+	row := r.database.QueryRow(ctx, query, email)
 
 	var auth entities.Auth
 	if err := row.Scan(&auth.ID, &auth.Email, &auth.Password, &auth.IsVerified, &auth.LockedUntil, &auth.Role); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, ce.ErrDBQueryNoRows) {
 			return false, nil, nil
 		}
-		return false, nil, ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
+		return false, nil, ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
 	}
 
 	return true, &auth, nil
 }
 
 func (r *authRepo) UpdateEmail(ctx context.Context, authID int64, email string) error {
-	tracer := AuthErrorTracer + ": UpdateEmail()"
+	ctx, span := otel.Tracer(authErrorTracer).Start(ctx, "UpdateEmail")
+	defer span.End()
 
 	query := `
 		UPDATE auth
@@ -164,25 +162,19 @@ func (r *authRepo) UpdateEmail(ctx context.Context, authID int64, email string) 
 		WHERE id = $2
 	`
 
-	executor := dbtx.GetSQLExecutor(ctx, r.db)
-	result, err := executor.ExecContext(ctx, query, email, authID)
-	if err != nil {
-		return ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
-	}
-	if rowsAffected == 0 {
-		return ce.NewError(ce.ErrCodeDBNoChange, ce.ErrMsgInvalidCredentials, tracer, ce.ErrDBNoChange)
+	if err := r.database.Execute(ctx, query, email, authID); err != nil {
+		if errors.Is(err, ce.ErrDBAffectNoRows) {
+			return ce.NewError(span, ce.CodeAuthNotFound, ce.MsgInvalidCredentials, err)
+		}
+		return ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
 	}
 
 	return nil
 }
 
 func (r *authRepo) UpdatePassword(ctx context.Context, authID int64, password string) error {
-	tracer := AuthErrorTracer + ": UpdatePassword()"
+	ctx, span := otel.Tracer(authErrorTracer).Start(ctx, "UpdatePassword")
+	defer span.End()
 
 	query := `
 		UPDATE auth
@@ -190,52 +182,41 @@ func (r *authRepo) UpdatePassword(ctx context.Context, authID int64, password st
 		WHERE id = $2
 	`
 
-	executor := dbtx.GetSQLExecutor(ctx, r.db)
-	result, err := executor.ExecContext(ctx, query, password, authID)
-	if err != nil {
-		return ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
-	}
-	if rowsAffected == 0 {
-		return ce.NewError(ce.ErrCodeDBNoChange, ce.ErrMsgInvalidCredentials, tracer, ce.ErrDBNoChange)
+	if err := r.database.Execute(ctx, query, password, authID); err != nil {
+		if errors.Is(err, ce.ErrDBAffectNoRows) {
+			return ce.NewError(span, ce.CodeAuthNotFound, ce.MsgInvalidCredentials, err)
+		}
+		return ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
 	}
 
 	return nil
 }
 
 func (r *authRepo) IsEmailRegistered(ctx context.Context, email string) (bool, error) {
-	tracer := AuthErrorTracer + ": IsEmailRegistered()"
+	ctx, span := otel.Tracer(authErrorTracer).Start(ctx, "IsEmailRegistered")
+	defer span.End()
 
-	query := `
-		SELECT 1
-		FROM auth
-		WHERE email = $1 AND deleted_at IS NULL
-	`
-
-	if dbtx.IsInsideTx(ctx) {
+	query := "SELECT 1 FROM auth WHERE email = $1 AND deleted_at IS NULL"
+	if r.database.IsWithinTx(ctx) {
 		query += " FOR UPDATE"
 	}
 
-	executor := dbtx.GetSQLExecutor(ctx, r.db)
-	row := executor.QueryRowContext(ctx, query, email)
+	row := r.database.QueryRow(ctx, query, email)
 
 	var exists int
 	if err := row.Scan(&exists); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, ce.ErrDBQueryNoRows) {
 			return false, nil
 		}
-		return false, ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
+		return false, ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
 	}
 
 	return true, nil
 }
 
 func (r *authRepo) VerifyEmail(ctx context.Context, authID int64) error {
-	tracer := AuthErrorTracer + ": VerifyEmail()"
+	ctx, span := otel.Tracer(authErrorTracer).Start(ctx, "VerifyEmail")
+	defer span.End()
 
 	query := `
 		UPDATE auth
@@ -243,25 +224,19 @@ func (r *authRepo) VerifyEmail(ctx context.Context, authID int64) error {
 		WHERE id = $1 AND is_verified = FALSE
 	`
 
-	executor := dbtx.GetSQLExecutor(ctx, r.db)
-	result, err := executor.ExecContext(ctx, query, authID)
-	if err != nil {
-		return ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
-	}
-	if rowsAffected == 0 {
-		return ce.NewError(ce.ErrCodeDBNoChange, ce.ErrMsgInvalidCredentials, tracer, ce.ErrDBNoChange)
+	if err := r.database.Execute(ctx, query, authID); err != nil {
+		if errors.Is(err, ce.ErrDBAffectNoRows) {
+			return ce.NewError(span, ce.CodeAuthNotFound, ce.MsgInvalidCredentials, err)
+		}
+		return ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
 	}
 
 	return nil
 }
 
 func (r *authRepo) LockAccount(ctx context.Context, authID int64, until time.Time) error {
-	tracer := AuthErrorTracer + ": LockAccount()"
+	ctx, span := otel.Tracer(authErrorTracer).Start(ctx, "LockAccount")
+	defer span.End()
 
 	query := `
 		UPDATE auth
@@ -269,18 +244,11 @@ func (r *authRepo) LockAccount(ctx context.Context, authID int64, until time.Tim
 		WHERE id = $2
 	`
 
-	executor := dbtx.GetSQLExecutor(ctx, r.db)
-	result, err := executor.ExecContext(ctx, query, until, authID)
-	if err != nil {
-		return ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
-	}
-	if rowsAffected == 0 {
-		return ce.NewError(ce.ErrCodeDBNoChange, ce.ErrMsgInvalidCredentials, tracer, ce.ErrDBNoChange)
+	if err := r.database.Execute(ctx, query, until, authID); err != nil {
+		if errors.Is(err, ce.ErrDBAffectNoRows) {
+			return ce.NewError(span, ce.CodeAuthNotFound, ce.MsgInvalidCredentials, err)
+		}
+		return ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
 	}
 
 	return nil

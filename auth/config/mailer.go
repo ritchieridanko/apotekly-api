@@ -1,35 +1,35 @@
 package config
 
 type mailerConfig struct {
-	host string
-	port int
-	user string
-	pass string
+	Host string
+	Port int
+	User string
+	Pass string
 }
 
 var mailerCfg *mailerConfig
 
-func LoadMailerConfig() {
+func loadMailerConfig() {
 	mailerCfg = &mailerConfig{
-		host: GetEnv("MAILER_HOST"),
-		port: GetNumberEnv("MAILER_PORT"),
-		user: GetEnv("MAILER_USER"),
-		pass: GetEnv("MAILER_PASS"),
+		Host: getEnv("MAILER_HOST"),
+		Port: getNumberEnv("MAILER_PORT"),
+		User: getEnv("MAILER_USER"),
+		Pass: getEnv("MAILER_PASS"),
 	}
 }
 
-func GetMailerHost() (host string) {
-	return mailerCfg.host
+func MailerGetHost() (host string) {
+	return mailerCfg.Host
 }
 
-func GetMailerPort() (port int) {
-	return mailerCfg.port
+func MailerGetPort() (port int) {
+	return mailerCfg.Port
 }
 
-func GetMailerUser() (user string) {
-	return mailerCfg.user
+func MailerGetUser() (user string) {
+	return mailerCfg.User
 }
 
-func GetMailerPass() (pass string) {
-	return mailerCfg.pass
+func MailerGetPass() (pass string) {
+	return mailerCfg.Pass
 }

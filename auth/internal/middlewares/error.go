@@ -2,32 +2,33 @@ package middlewares
 
 import (
 	"errors"
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ritchieridanko/apotekly-api/auth/internal/ce"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/utils"
-	"github.com/ritchieridanko/apotekly-api/auth/pkg/ce"
 )
+
+// TODO
+// 1: When custom logger is made, log the error here
 
 func ErrorHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		ctx.Next()
 
-		if len(ctx.Errors) == 0 {
+		errs := ctx.Errors
+		if len(errs) == 0 {
 			return
 		}
 
-		err := ctx.Errors[0]
-
-		var cErr *ce.Error
-		if errors.As(err.Err, &cErr) {
-			log.Printf("ERROR: (%d) => %v", cErr.Code, cErr.Err)
-			utils.SetErrorResponse(ctx, cErr.Message, ce.MapToExternalErrorCode(cErr.Code))
+		var customErr *ce.Error
+		if errors.As(errs[0].Err, &customErr) {
+			// TODO (1)
+			utils.SetErrorResponse(ctx, customErr.Message, customErr.ToExternalErrorCode())
 			return
 		}
 
-		log.Println("ERROR:", err.Err)
-		utils.SetErrorResponse(ctx, ce.ErrMsgInternalServer, http.StatusInternalServerError)
+		// TODO (1)
+		utils.SetErrorResponse(ctx, ce.MsgInternalServer, http.StatusInternalServerError)
 	}
 }

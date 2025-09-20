@@ -1,54 +1,55 @@
 package middlewares
 
 import (
+	"context"
 	"errors"
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/ritchieridanko/apotekly-api/auth/internal/ce"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/constants"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/utils"
-	"github.com/ritchieridanko/apotekly-api/auth/pkg/ce"
+	"go.opentelemetry.io/otel"
 )
 
-const AuthErrorTracer = ce.AuthMiddlewareTracer
+const authErrorTracer string = "middleware.auth"
 
 func Authenticate() gin.HandlerFunc {
-	tracer := AuthErrorTracer + ": Authenticate()"
-
 	return func(ctx *gin.Context) {
+		ctxWithTracer, span := otel.Tracer(authErrorTracer).Start(ctx.Request.Context(), "Authenticate")
+		defer span.End()
+
 		authHeader := ctx.GetHeader("Authorization")
 		if len(authHeader) == 0 {
-			err := ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgUnauthenticated, tracer, ce.ErrTokenNotFound)
+			err := ce.NewError(span, ce.CodeAuthUnauthenticated, ce.MsgUnauthenticated, errors.New("authorization header is missing"))
 			ctx.Error(err)
 			ctx.Abort()
 			return
 		}
 
-		authLength := 2
 		authSlice := strings.Split(authHeader, " ")
-		if len(authSlice) != authLength {
-			err := ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgUnauthenticated, tracer, ce.ErrInvalidTokenFormat)
+		if len(authSlice) != 2 {
+			err := ce.NewError(span, ce.CodeAuthTokenMalformed, ce.MsgUnauthenticated, errors.New("authorization header format is invalid"))
 			ctx.Error(err)
 			ctx.Abort()
 			return
 		}
 		if authType := strings.ToLower(authSlice[0]); authType != "bearer" {
-			err := ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgUnauthenticated, tracer, ce.ErrInvalidTokenFormat)
+			err := ce.NewError(span, ce.CodeAuthTokenMalformed, ce.MsgUnauthenticated, errors.New("authorization type must be Bearer"))
 			ctx.Error(err)
 			ctx.Abort()
 			return
 		}
 
-		token := authSlice[1]
-		claim, err := utils.ParseJWTToken(token)
+		claim, err := utils.ParseJWTToken(authSlice[1])
 		if err != nil {
-			err := ce.NewError(ce.ErrCodeParsing, ce.ErrMsgInternalServer, tracer, err)
-			if errors.Is(err, jwt.ErrTokenExpired) {
-				err = ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgInvalidCredentials, tracer, jwt.ErrTokenExpired)
-			}
-			if errors.Is(err, jwt.ErrTokenMalformed) {
-				err = ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgInvalidCredentials, tracer, jwt.ErrTokenMalformed)
+			switch {
+			case errors.Is(err, ce.ErrTokenExpired):
+				err = ce.NewError(span, ce.CodeAuthTokenExpired, ce.MsgUnauthenticated, err)
+			case errors.Is(err, ce.ErrTokenMalformed):
+				err = ce.NewError(span, ce.CodeAuthTokenMalformed, ce.MsgUnauthenticated, err)
+			default:
+				err = ce.NewError(span, ce.CodeAuthTokenParsing, ce.MsgInternalServer, err)
 			}
 
 			ctx.Error(err)
@@ -56,20 +57,24 @@ func Authenticate() gin.HandlerFunc {
 			return
 		}
 
-		ctx.Set(constants.RequestKeyAuthID, claim.AuthID)
-		ctx.Set(constants.RequestKeyRoleID, claim.RoleID)
-		ctx.Set(constants.RequestKeyIsVerified, claim.IsVerified)
+		ctxWithTracer = context.WithValue(ctxWithTracer, constants.CtxKeyAuthID, claim.AuthID)
+		ctxWithTracer = context.WithValue(ctxWithTracer, constants.CtxKeyRoleID, claim.RoleID)
+		ctxWithTracer = context.WithValue(ctxWithTracer, constants.CtxKeyIsVerified, claim.IsVerified)
+
+		ctx.Request = ctx.Request.WithContext(ctxWithTracer)
 		ctx.Next()
 	}
 }
 
 func RequireVerified() gin.HandlerFunc {
-	tracer := AuthErrorTracer + ": RequireVerified()"
-
 	return func(ctx *gin.Context) {
-		value, exists := ctx.Get(constants.RequestKeyIsVerified)
-		if !exists || !value.(bool) {
-			err := ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgEmailNotVerified, tracer, ce.ErrEmailVerificationRequired)
+		ctxWithTracer, span := otel.Tracer(authErrorTracer).Start(ctx.Request.Context(), "RequireVerified")
+		defer span.End()
+
+		value := ctxWithTracer.Value(constants.CtxKeyIsVerified)
+		isVerified, ok := value.(bool)
+		if !ok || !isVerified {
+			err := ce.NewError(span, ce.CodeAuthNotVerified, "Please verify your email first!", errors.New("account not verified"))
 			ctx.Error(err)
 			ctx.Abort()
 			return

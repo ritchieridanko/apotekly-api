@@ -10,11 +10,11 @@ var microsoftEndpoint = oauth2.Endpoint{
 	TokenURL: "https://login.microsoftonline.com/common/oauth2/v2.0/token",
 }
 
-func InitMicrosoftOAuth() *oauth2.Config {
+func initMicrosoftOAuth() *oauth2.Config {
 	return &oauth2.Config{
-		ClientID:     config.GetMicrosoftClientID(),
-		ClientSecret: config.GetMicrosoftClientSecret(),
-		RedirectURL:  config.GetMicrosoftRedirectURL(),
+		ClientID:     config.OAuthMicrosoftGetClientID(),
+		ClientSecret: config.OAuthMicrosoftGetClientSecret(),
+		RedirectURL:  config.OAuthMicrosoftGetRedirectURL(),
 		Scopes:       []string{"openid", "profile", "email", "offline_access"},
 		Endpoint:     microsoftEndpoint,
 	}

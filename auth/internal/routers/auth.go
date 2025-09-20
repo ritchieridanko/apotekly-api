@@ -6,7 +6,7 @@ import (
 	"github.com/ritchieridanko/apotekly-api/auth/internal/middlewares"
 )
 
-func AuthRouters(h handlers.AuthHandler) func(*gin.RouterGroup) {
+func authRouters(h handlers.AuthHandler) func(*gin.RouterGroup) {
 	return func(rg *gin.RouterGroup) {
 		rg.GET("/email/available", h.IsEmailRegistered)
 		rg.GET("/verify-email/confirm", h.VerifyEmail)
@@ -17,7 +17,7 @@ func AuthRouters(h handlers.AuthHandler) func(*gin.RouterGroup) {
 		rg.POST("/refresh-session", h.RefreshSession)
 		rg.POST("/forgot-password", h.ForgotPassword)
 		rg.POST("/reset-password/confirm", h.ResetPassword)
-		rg.POST("/reset-password/validate", h.IsPasswordResetTokenValid)
+		rg.POST("/reset-password/validate", h.IsResetTokenValid)
 		rg.POST("/verify-email/resend", middlewares.Authenticate(), h.ResendVerification)
 
 		rg.PATCH("/email", middlewares.Authenticate(), middlewares.RequireVerified(), h.ChangeEmail)

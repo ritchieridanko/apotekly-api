@@ -1,17 +1,17 @@
 package config
 
 type clientConfig struct {
-	baseURL string
+	BaseURL string
 }
 
 var clientCfg *clientConfig
 
-func LoadClientConfig() {
+func loadClientConfig() {
 	clientCfg = &clientConfig{
-		baseURL: GetEnv("CLIENT_URL"),
+		BaseURL: getEnv("CLIENT_URL"),
 	}
 }
 
-func GetClientBaseURL() (url string) {
-	return clientCfg.baseURL
+func ClientGetBaseURL() (url string) {
+	return clientCfg.BaseURL
 }

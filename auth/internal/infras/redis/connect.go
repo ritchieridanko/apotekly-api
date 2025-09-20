@@ -2,26 +2,27 @@ package redis
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"time"
 
-	r "github.com/redis/go-redis/v9"
+	"github.com/redis/go-redis/v9"
 	"github.com/ritchieridanko/apotekly-api/auth/config"
 )
 
-func NewConnection() (redis *r.Client, err error) {
-	password := config.GetRedisPass()
+func Connect() (cache *redis.Client, err error) {
+	password := config.CacheGetPass()
 	if password == "" {
-		log.Println("WARNING: connecting to redis with no password")
+		log.Println("WARNING -> connecting to redis without password")
 	}
 
-	client := r.NewClient(&r.Options{
-		Addr:     fmt.Sprintf("%s:%s", config.GetRedisHost(), config.GetRedisPort()),
-		Password: password,
-	})
+	client := redis.NewClient(
+		&redis.Options{
+			Addr:     config.CacheGetHost() + ":" + config.CacheGetPort(),
+			Password: password,
+		},
+	)
 
-	// Test the connection
+	// test connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -29,7 +30,6 @@ func NewConnection() (redis *r.Client, err error) {
 		return nil, err
 	}
 
-	log.Println("SUCCESS: connected to redis")
-
+	log.Println("SUCCESS -> connected to redis")
 	return client, nil
 }

@@ -18,7 +18,7 @@ func RunMigrations(db *sql.DB) error {
 
 	migration, err := migrate.NewWithDatabaseInstance(
 		"file://database/migrations",
-		config.GetDBName(),
+		config.DBGetName(),
 		driver,
 	)
 	if err != nil {
@@ -29,7 +29,7 @@ func RunMigrations(db *sql.DB) error {
 		return err
 	}
 
-	log.Println("migrations done successfully")
+	log.Println("SUCCESS -> applied database migrations")
 	return nil
 }
 
@@ -41,7 +41,7 @@ func RollbackMigrations(db *sql.DB, steps int) error {
 
 	migration, err := migrate.NewWithDatabaseInstance(
 		"file://database/migrations",
-		config.GetDBName(),
+		config.DBGetName(),
 		driver,
 	)
 	if err != nil {
@@ -49,7 +49,7 @@ func RollbackMigrations(db *sql.DB, steps int) error {
 	}
 
 	if steps == 0 {
-		// Roll back everything
+		// rollback all migrations
 		err = migration.Down()
 	} else {
 		err = migration.Steps(-steps)
@@ -59,6 +59,6 @@ func RollbackMigrations(db *sql.DB, steps int) error {
 		return err
 	}
 
-	log.Println("migrations rolled back successfully")
+	log.Println("SUCCESS -> rolled back database migrations")
 	return nil
 }

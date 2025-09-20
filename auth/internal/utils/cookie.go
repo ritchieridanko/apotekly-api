@@ -8,16 +8,16 @@ import (
 	"github.com/ritchieridanko/apotekly-api/auth/internal/constants"
 )
 
-func SetSessionCookie(ctx *gin.Context, token string) {
+func CookieSetSession(ctx *gin.Context, token string) {
 	second := 60
-	duration := config.GetSessionDuration() * second
-	isSecure := strings.ToLower(config.GetServerProtocol()) == "https"
-	host := config.GetServerHost()
+	duration := config.AuthGetSessionDuration() * second
+	isSecure := strings.ToLower(config.ServerGetProtocol()) == "https"
+	host := config.ServerGetHost()
 	ctx.SetCookie(constants.CookieKeySessionToken, token, duration, "/", host, isSecure, true)
 }
 
-func DeleteSessionCookie(ctx *gin.Context) {
-	isSecure := strings.ToLower(config.GetServerProtocol()) == "https"
-	host := config.GetServerHost()
+func CookieDelSession(ctx *gin.Context) {
+	isSecure := strings.ToLower(config.ServerGetProtocol()) == "https"
+	host := config.ServerGetHost()
 	ctx.SetCookie(constants.CookieKeySessionToken, "", -1, "/", host, isSecure, true)
 }

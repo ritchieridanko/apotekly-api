@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -16,23 +17,23 @@ func GenerateRandomToken() (token string) {
 
 func GenerateJWTToken(authID int64, roleID int16, isVerified bool) (jwtToken string, err error) {
 	now := time.Now().UTC()
-	jwtDuration := time.Duration(config.GetJWTDuration()) * time.Minute
+	jwtDuration := time.Duration(config.AuthGetJWTDuration()) * time.Minute
 
 	claim := entities.Claim{
 		AuthID:     authID,
 		RoleID:     roleID,
 		IsVerified: isVerified,
 		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:    config.GetJWTIssuer(),
+			Issuer:    config.AuthGetJWTIssuer(),
 			Subject:   fmt.Sprintf("%d", authID),
-			Audience:  jwt.ClaimStrings(config.GetJWTAudiences()),
+			Audience:  jwt.ClaimStrings(config.AuthGetJWTAudiences()),
 			IssuedAt:  &jwt.NumericDate{Time: now},
 			ExpiresAt: &jwt.NumericDate{Time: now.Add(jwtDuration)},
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claim)
 
-	jwtToken, err = token.SignedString([]byte(config.GetJWTSecret()))
+	jwtToken, err = token.SignedString([]byte(config.AuthGetJWTSecret()))
 	if err != nil {
 		return "", err
 	}
@@ -45,7 +46,7 @@ func ParseJWTToken(tokenString string) (claim *entities.Claim, err error) {
 		tokenString,
 		&entities.Claim{},
 		func(t *jwt.Token) (interface{}, error) {
-			return []byte(config.GetJWTSecret()), nil
+			return []byte(config.AuthGetJWTSecret()), nil
 		},
 	)
 	if err != nil {
@@ -54,12 +55,12 @@ func ParseJWTToken(tokenString string) (claim *entities.Claim, err error) {
 
 	claim, ok := token.Claims.(*entities.Claim)
 	if !ok {
-		return nil, fmt.Errorf("invalid jwt token type")
+		return nil, errors.New("invalid jwt token claim")
 	}
 
 	return claim, nil
 }
 
 func GenerateURLWithTokenQuery(path, token string) (url string) {
-	return config.GetClientBaseURL() + path + "?token=" + token
+	return config.ClientGetBaseURL() + path + "?token=" + token
 }

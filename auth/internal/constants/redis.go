@@ -9,5 +9,9 @@ const (
 )
 
 const (
-	RedisDurationTotalFailedAuth int = 15
+	RedisDurationTotalFailedAuth int = 15 // minutes
+)
+
+const (
+	RedisMaxTotalFailedAuth int = 5 // times
 )

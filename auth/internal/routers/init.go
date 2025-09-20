@@ -4,12 +4,15 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ritchieridanko/apotekly-api/auth/internal/handlers"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/middlewares"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
-func Initialize(auth func(*gin.RouterGroup), oauth func(*gin.RouterGroup)) *gin.Engine {
+func Initialize(ah handlers.AuthHandler, oah handlers.OAuthHandler) *gin.Engine {
 	router := gin.New()
 
+	router.Use(otelgin.Middleware("app.auth"))
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 	router.Use(middlewares.ErrorHandler())
@@ -23,7 +26,10 @@ func Initialize(auth func(*gin.RouterGroup), oauth func(*gin.RouterGroup)) *gin.
 		ctx.JSON(http.StatusOK, gin.H{"message": "pong"})
 	})
 
+	auth := authRouters(ah)
 	auth(api.Group("/auth"))
+
+	oauth := oAuthRouters(oah)
 	oauth(api.Group("/oauth"))
 
 	return router

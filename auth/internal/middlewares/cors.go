@@ -8,7 +8,7 @@ import (
 )
 
 func CORS() gin.HandlerFunc {
-	url := config.GetClientBaseURL()
+	url := config.ClientGetBaseURL()
 
 	return func(ctx *gin.Context) {
 		ctx.Writer.Header().Set("Access-Control-Allow-Origin", url)

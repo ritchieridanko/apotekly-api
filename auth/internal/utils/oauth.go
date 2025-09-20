@@ -10,7 +10,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-func GetUserFromGoogle(ctx context.Context, token *oauth2.Token, config *oauth2.Config) (user *dto.GoogleUser, err error) {
+func OAuthGoogleGetUserInfo(ctx context.Context, token *oauth2.Token, config *oauth2.Config) (user *dto.GoogleUser, err error) {
 	client := config.Client(ctx, token)
 
 	response, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
@@ -31,7 +31,7 @@ func GetUserFromGoogle(ctx context.Context, token *oauth2.Token, config *oauth2.
 	return &googleUser, nil
 }
 
-func GetUserFromMicrosoft(ctx context.Context, accessToken string) (user *dto.MicrosoftUser, err error) {
+func OAuthMicrosoftGetUserInfo(ctx context.Context, accessToken string) (user *dto.MicrosoftUser, err error) {
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://graph.microsoft.com/v1.0/me", nil)
 	if err != nil {
 		return nil, err

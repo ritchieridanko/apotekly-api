@@ -13,33 +13,32 @@ The **Auth Service** is responsible for handling authentication and authorizatio
 
 ```bash
 auth/
-├── cmd/             # Application entry points
-│  ├── migrate/      # Database migration tool
+├── cmd/             # Application entrypoints
+│  ├── migrate/      # DB migration application
 │  └── server/       # Main server application
 ├── config/          # Configuration management
-├── database/        # Database migrations and seedings
+├── database/        # DB migrations and seedings
 │  └── migrations/   # SQL migration files
-├── internal/        # Private application code
-│  ├── caches/       # Redis caching utilities
-│  ├── constants/    # Application constants
-│  ├── di/           # Dependency injection container
-│  ├── dto/          # Data transfer objects
-│  ├── entities/     # Domain entities
-│  ├── handlers/     # HTTP request handlers
-│  ├── infras/       # Infrastructure connections
-│  ├── middlewares/  # HTTP middlewares
-│  ├── repos/        # Data access layer
-│  ├── routers/      # Route definitions
-│  ├── server/       # Server setup and configuration
-│  ├── services/     # Business logic services
-│  │  ├── email/     # Email service with templates
-│  │  └── oauth/     # OAuth provider integrations
-│  ├── usecases/     # Usecase implementations
-│  ├── utils/        # Utility functions
-│  └── validators/   # Custom validation rules
-└── pkg/             # Shared packages
-   ├── ce/           # Custom error handling
-   └── dbtx/         # Database transaction utilities
+└── internal/        # Private application code
+   ├── ce/           # Custom error handlers
+   ├── constants/    # Application constants
+   ├── di/           # Dependency injection container
+   ├── dto/          # Data transfer objects
+   ├── entities/     # Domain entities
+   ├── handlers/     # HTTP request handlers
+   ├── infras/       # Infrastructure initializations
+   ├── middlewares/  # HTTP middlewares
+   ├── repos/        # Data access layer
+   ├── routers/      # Route definitions
+   ├── server/       # Server setup and configuration
+   ├── services/     # Business logic services
+   │  ├── cache/     # Caching service layer
+   │  ├── db/        # DB service layer
+   │  ├── email/     # Email service with templates
+   │  └── oauth/     # OAuth provider integrations
+   ├── usecases/     # Usecase implementations
+   ├── utils/        # Utility functions
+   └── validators/   # Custom validation rules
 ```
 
 ## 🚀 Running the Service
@@ -70,16 +69,18 @@ auth/
       -p 6379:6379 redis:latest
    ```
 
-3. **Apply Migrations**
+3. **Run the Service**
+
+   You can run the service in development mode
 
    ```bash
-   make migrate-up
+   make dev-up
    ```
 
-4. **Run Server**
+   Or, you can build and run the service
 
    ```bash
-   make run-server
+   make build-and-run
    ```
 
 ## 📖 API Endpoints

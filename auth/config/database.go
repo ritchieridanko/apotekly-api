@@ -1,65 +1,65 @@
 package config
 
 type dbConfig struct {
-	host            string
-	port            string
-	user            string
-	pass            string
-	name            string
-	sslMode         string
-	maxIdleConns    int
-	maxOpenConns    int
-	connMaxLifetime int
+	Host            string
+	Port            string
+	User            string
+	Pass            string
+	Name            string
+	SSLMode         string
+	MaxIdleConns    int
+	MaxOpenConns    int
+	ConnMaxLifetime int
 }
 
 var dbCfg *dbConfig
 
-func LoadDBConfig() {
+func loadDBConfig() {
 	dbCfg = &dbConfig{
-		host:            GetEnv("DB_HOST"),
-		port:            GetEnv("DB_PORT"),
-		user:            GetEnv("DB_USER"),
-		pass:            GetEnv("DB_PASS"),
-		name:            GetEnv("DB_NAME"),
-		sslMode:         GetEnv("DB_SSL_MODE"),
-		maxIdleConns:    GetNumberEnv("DB_MAX_IDLE_CONNS"),
-		maxOpenConns:    GetNumberEnv("DB_MAX_OPEN_CONNS"),
-		connMaxLifetime: GetNumberEnv("DB_CONN_MAX_LIFETIME"),
+		Host:            getEnv("DB_HOST"),
+		Port:            getEnv("DB_PORT"),
+		User:            getEnv("DB_USER"),
+		Pass:            getEnv("DB_PASS"),
+		Name:            getEnv("DB_NAME"),
+		SSLMode:         getEnv("DB_SSL_MODE"),
+		MaxIdleConns:    getNumberEnv("DB_MAX_IDLE_CONNS"),
+		MaxOpenConns:    getNumberEnv("DB_MAX_OPEN_CONNS"),
+		ConnMaxLifetime: getNumberEnv("DB_CONN_MAX_LIFETIME"),
 	}
 }
 
-func GetDBHost() (host string) {
-	return dbCfg.host
+func DBGetHost() (host string) {
+	return dbCfg.Host
 }
 
-func GetDBPort() (port string) {
-	return dbCfg.port
+func DBGetPort() (port string) {
+	return dbCfg.Port
 }
 
-func GetDBUser() (username string) {
-	return dbCfg.user
+func DBGetUser() (username string) {
+	return dbCfg.User
 }
 
-func GetDBPass() (password string) {
-	return dbCfg.pass
+func DBGetPass() (password string) {
+	return dbCfg.Pass
 }
 
-func GetDBName() (name string) {
-	return dbCfg.name
+func DBGetName() (name string) {
+	return dbCfg.Name
 }
 
-func GetDBSSLMode() (mode string) {
-	return dbCfg.sslMode
+func DBGetSSLMode() (mode string) {
+	return dbCfg.SSLMode
 }
 
-func GetDBMaxIdleConns() (max int) {
-	return dbCfg.maxIdleConns
+func DBGetMaxIdleConns() (max int) {
+	return dbCfg.MaxIdleConns
 }
 
-func GetDBMaxOpenConns() (max int) {
-	return dbCfg.maxOpenConns
+func DBGetMaxOpenConns() (max int) {
+	return dbCfg.MaxOpenConns
 }
 
-func GetDBConnMaxLifetime() (max int) {
-	return dbCfg.connMaxLifetime
+func DBGetConnMaxLifetime() (max int) {
+	return dbCfg.ConnMaxLifetime
 }

@@ -4,16 +4,17 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ritchieridanko/apotekly-api/auth/internal/ce"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/constants"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/dto"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/entities"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/usecases"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/utils"
-	"github.com/ritchieridanko/apotekly-api/auth/pkg/ce"
+	"go.opentelemetry.io/otel"
 	"golang.org/x/oauth2"
 )
 
-const OAuthErrorTracer = ce.OAuthHandlerTracer
+const oAuthErrorTracer string = "handler.oauth"
 
 type OAuthHandler interface {
 	GoogleOAuth(ctx *gin.Context)
@@ -39,25 +40,26 @@ func (h *oauthHandler) GoogleOAuth(ctx *gin.Context) {
 }
 
 func (h *oauthHandler) GoogleCallback(ctx *gin.Context) {
-	tracer := OAuthErrorTracer + ": GoogleCallback()"
+	ctxWithTracer, span := otel.Tracer(oAuthErrorTracer).Start(ctx.Request.Context(), "GoogleCallback")
+	defer span.End()
 
 	var params dto.ReqOAuth
 	if err := ctx.ShouldBindQuery(&params); err != nil {
-		err := ce.NewError(ce.ErrCodeInvalidParams, ce.ErrMsgInvalidParams, tracer, err)
+		err := ce.NewError(span, ce.CodeInvalidParams, ce.MsgInvalidParams, err)
 		ctx.Error(err)
 		return
 	}
 
-	token, err := h.google.Exchange(ctx, params.Code)
+	token, err := h.google.Exchange(ctxWithTracer, params.Code)
 	if err != nil {
-		err := ce.NewError(ce.ErrCodeOAuth, ce.ErrMsgInternalServer, tracer, err)
+		err := ce.NewError(span, ce.CodeOAuthCodeExchangeFailed, ce.MsgInternalServer, err)
 		ctx.Error(err)
 		return
 	}
 
-	user, err := utils.GetUserFromGoogle(ctx, token, h.google)
+	user, err := utils.OAuthGoogleGetUserInfo(ctxWithTracer, token, h.google)
 	if err != nil {
-		err := ce.NewError(ce.ErrCodeOAuth, ce.ErrMsgInternalServer, tracer, err)
+		err := ce.NewError(span, ce.CodeOAuthGetUserInfoFailed, ce.MsgInternalServer, err)
 		ctx.Error(err)
 		return
 	}
@@ -74,13 +76,13 @@ func (h *oauthHandler) GoogleCallback(ctx *gin.Context) {
 		IPAddress: ctx.ClientIP(),
 	}
 
-	authToken, err := h.oau.Authenticate(ctx, &data, &request)
+	authToken, err := h.oau.Authenticate(ctxWithTracer, &data, &request)
 	if err != nil {
 		ctx.Error(err)
 		return
 	}
 
-	utils.SetSessionCookie(ctx, authToken.SessionToken)
+	utils.CookieSetSession(ctx, authToken.SessionToken)
 	url := utils.GenerateURLWithTokenQuery("/auth/oauth-callback", authToken.AccessToken)
 
 	ctx.Redirect(http.StatusTemporaryRedirect, url)
@@ -92,25 +94,26 @@ func (h *oauthHandler) MicrosoftOAuth(ctx *gin.Context) {
 }
 
 func (h *oauthHandler) MicrosoftCallback(ctx *gin.Context) {
-	tracer := OAuthErrorTracer + ": MicrosoftCallback()"
+	ctxWithTracer, span := otel.Tracer(oAuthErrorTracer).Start(ctx.Request.Context(), "MicrosoftCallback")
+	defer span.End()
 
 	var params dto.ReqOAuth
 	if err := ctx.ShouldBindQuery(&params); err != nil {
-		err := ce.NewError(ce.ErrCodeInvalidParams, ce.ErrMsgInvalidParams, tracer, err)
+		err := ce.NewError(span, ce.CodeInvalidParams, ce.MsgInvalidParams, err)
 		ctx.Error(err)
 		return
 	}
 
-	token, err := h.microsoft.Exchange(ctx, params.Code)
+	token, err := h.microsoft.Exchange(ctxWithTracer, params.Code)
 	if err != nil {
-		err := ce.NewError(ce.ErrCodeOAuth, ce.ErrMsgInternalServer, tracer, err)
+		err := ce.NewError(span, ce.CodeOAuthCodeExchangeFailed, ce.MsgInternalServer, err)
 		ctx.Error(err)
 		return
 	}
 
-	user, err := utils.GetUserFromMicrosoft(ctx, token.AccessToken)
+	user, err := utils.OAuthMicrosoftGetUserInfo(ctxWithTracer, token.AccessToken)
 	if err != nil {
-		err := ce.NewError(ce.ErrCodeOAuth, ce.ErrMsgInternalServer, tracer, err)
+		err := ce.NewError(span, ce.CodeOAuthGetUserInfoFailed, ce.MsgInternalServer, err)
 		ctx.Error(err)
 		return
 	}
@@ -132,13 +135,13 @@ func (h *oauthHandler) MicrosoftCallback(ctx *gin.Context) {
 		IPAddress: ctx.ClientIP(),
 	}
 
-	authToken, err := h.oau.Authenticate(ctx, &data, &request)
+	authToken, err := h.oau.Authenticate(ctxWithTracer, &data, &request)
 	if err != nil {
 		ctx.Error(err)
 		return
 	}
 
-	utils.SetSessionCookie(ctx, authToken.SessionToken)
+	utils.CookieSetSession(ctx, authToken.SessionToken)
 	url := utils.GenerateURLWithTokenQuery("/auth/oauth-callback", authToken.AccessToken)
 
 	ctx.Redirect(http.StatusTemporaryRedirect, url)

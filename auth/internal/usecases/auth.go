@@ -2,21 +2,23 @@ package usecases
 
 import (
 	"context"
+	"errors"
 	"log"
 	"time"
 
 	"github.com/ritchieridanko/apotekly-api/auth/config"
-	"github.com/ritchieridanko/apotekly-api/auth/internal/caches"
+	"github.com/ritchieridanko/apotekly-api/auth/internal/ce"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/constants"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/entities"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/repos"
+	"github.com/ritchieridanko/apotekly-api/auth/internal/services/cache"
+	"github.com/ritchieridanko/apotekly-api/auth/internal/services/db"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/services/email"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/utils"
-	"github.com/ritchieridanko/apotekly-api/auth/pkg/ce"
-	"github.com/ritchieridanko/apotekly-api/auth/pkg/dbtx"
+	"go.opentelemetry.io/otel"
 )
 
-const AuthErrorTracer = ce.AuthUsecaseTracer
+const authErrorTracer string = "usecase.auth"
 
 type AuthUsecase interface {
 	Register(ctx context.Context, data *entities.NewAuth, request *entities.NewRequest) (token *entities.AuthToken, err error)
@@ -29,51 +31,51 @@ type AuthUsecase interface {
 	ResendVerification(ctx context.Context, authID int64) (err error)
 	VerifyEmail(ctx context.Context, token string) (err error)
 	IsEmailRegistered(ctx context.Context, email string) (exists bool, err error)
-	IsPasswordResetTokenValid(ctx context.Context, token string) (exists bool, err error)
+	IsResetTokenValid(ctx context.Context, token string) (exists bool, err error)
 	RefreshSession(ctx context.Context, sessionToken string) (token *entities.AuthToken, err error)
 }
 
 type authUsecase struct {
 	ar    repos.AuthRepo
-	tx    dbtx.TxManager
 	su    SessionUsecase
-	cache caches.Cache
+	tx    db.TxManager
+	cache cache.CacheService
 	email email.EmailService
 }
 
 func NewAuthUsecase(
 	ar repos.AuthRepo,
-	tx dbtx.TxManager,
 	su SessionUsecase,
-	cache caches.Cache,
+	tx db.TxManager,
+	cache cache.CacheService,
 	email email.EmailService,
 ) AuthUsecase {
-	return &authUsecase{ar, tx, su, cache, email}
+	return &authUsecase{ar, su, tx, cache, email}
 }
 
 func (u *authUsecase) Register(ctx context.Context, data *entities.NewAuth, request *entities.NewRequest) (*entities.AuthToken, error) {
-	tracer := AuthErrorTracer + ": Register()"
+	ctx, span := otel.Tracer(authErrorTracer).Start(ctx, "Register")
+	defer span.End()
 
 	now := time.Now().UTC()
-	sessionDuration := time.Duration(config.GetSessionDuration()) * time.Minute
+	sessionDuration := time.Duration(config.AuthGetSessionDuration()) * time.Minute
 
 	var normalizedEmail string
 	var authID int64
 	var token entities.AuthToken
-	err := u.tx.ReturnError(ctx, func(ctx context.Context) error {
+	err := u.tx.WithTx(ctx, func(ctx context.Context) error {
 		normalizedEmail = utils.NormalizeString(data.Email)
-
 		exists, err := u.ar.IsEmailRegistered(ctx, normalizedEmail)
 		if err != nil {
 			return err
 		}
 		if exists {
-			return ce.NewError(ce.ErrCodeConflict, ce.ErrMsgEmailRegistered, tracer, ce.ErrEmailAlreadyRegistered)
+			return ce.NewError(span, ce.CodeAuthEmailConflict, "Email is already registered.", errors.New("registration email conflict"))
 		}
 
 		hashedPassword, err := utils.HashPassword(data.Password)
 		if err != nil {
-			return ce.NewError(ce.ErrCodePassHashing, ce.ErrMsgInternalServer, tracer, err)
+			return ce.NewError(span, ce.CodePasswordHashingFailed, ce.MsgInternalServer, err)
 		}
 
 		newData := entities.NewAuth{
@@ -90,7 +92,7 @@ func (u *authUsecase) Register(ctx context.Context, data *entities.NewAuth, requ
 		sessionToken := utils.GenerateRandomToken()
 		accessToken, err := utils.GenerateJWTToken(authID, newData.Role, false)
 		if err != nil {
-			return ce.NewError(ce.ErrCodeToken, ce.ErrMsgInternalServer, tracer, err)
+			return ce.NewError(span, ce.CodeJWTGenerationFailed, ce.MsgInternalServer, err)
 		}
 
 		sessionData := entities.NewSession{
@@ -117,25 +119,26 @@ func (u *authUsecase) Register(ctx context.Context, data *entities.NewAuth, requ
 	}
 
 	verificationToken := utils.GenerateRandomToken()
-	tokenDuration := time.Duration(config.GetEmailVerificationTokenDuration()) * time.Minute
+	tokenDuration := time.Duration(config.AuthGetVerifyTokenDuration()) * time.Minute
 	if err := u.cache.NewOrReplaceVerificationToken(ctx, authID, verificationToken, tokenDuration); err != nil {
-		log.Println("WARNING: failed to set verification token in redis after registration:", err.Error())
+		log.Println("WARNING -> failed to store verification token in cache after registration:", err.Error())
 		return &token, nil
 	}
 
-	if err := u.email.SendWelcomeMessage(normalizedEmail, verificationToken); err != nil {
-		log.Println("WARNING: failed to send welcome message after registration:", err.Error())
+	if err := u.email.SendWelcomeMessage(ctx, normalizedEmail, verificationToken); err != nil {
+		log.Println("WARNING -> failed to send welcome email after registration:", err.Error())
 	}
 
 	return &token, nil
 }
 
 func (u *authUsecase) Login(ctx context.Context, data *entities.GetAuth, request *entities.NewRequest) (*entities.AuthToken, error) {
-	tracer := AuthErrorTracer + ": Login()"
+	ctx, span := otel.Tracer(authErrorTracer).Start(ctx, "Login")
+	defer span.End()
 
 	now := time.Now().UTC()
-	sessionDuration := time.Duration(config.GetSessionDuration()) * time.Minute
-	lockDuration := time.Duration(config.GetAuthLockDuration()) * time.Minute
+	sessionDuration := time.Duration(config.AuthGetSessionDuration()) * time.Minute
+	lockDuration := time.Duration(config.AuthGetLockDuration()) * time.Minute
 
 	normalizedEmail := utils.NormalizeString(data.Email)
 	auth, err := u.ar.GetByEmail(ctx, normalizedEmail)
@@ -143,15 +146,15 @@ func (u *authUsecase) Login(ctx context.Context, data *entities.GetAuth, request
 		return nil, err
 	}
 	if auth.Password == nil {
-		return nil, ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgInvalidCredentials, tracer, ce.ErrOAuthRegularLogin)
+		return nil, ce.NewError(span, ce.CodeOAuthRegularLogin, ce.MsgInvalidCredentials, errors.New("email registered as oauth"))
 	}
 	if auth.LockedUntil != nil && auth.LockedUntil.After(now) {
-		return nil, ce.NewError(ce.ErrCodeLocked, ce.ErrMsgAccountLocked, tracer, ce.ErrAccountLocked)
+		return nil, ce.NewError(span, ce.CodeAuthLocked, "Your account is locked. Please try again later!", errors.New("account locked"))
 	}
 
-	totalFailedAuthKey := utils.GenerateDynamicRedisKey(constants.RedisKeyTotalFailedAuth, auth.ID)
+	totalFailedAuthKey := utils.CacheCreateKey(constants.RedisKeyTotalFailedAuth, auth.ID)
 	if err := utils.ValidatePassword(*auth.Password, data.Password); err != nil {
-		shouldBeLocked, cacheErr := u.cache.ShouldAccountBeLocked(ctx, totalFailedAuthKey)
+		shouldBeLocked, cacheErr := u.cache.ShouldLockAccount(ctx, auth.ID)
 		if cacheErr != nil {
 			return nil, cacheErr
 		}
@@ -162,12 +165,11 @@ func (u *authUsecase) Login(ctx context.Context, data *entities.GetAuth, request
 			if err := u.cache.Del(ctx, totalFailedAuthKey); err != nil {
 				return nil, err
 			}
-			return nil, ce.NewError(ce.ErrCodeLocked, ce.ErrMsgAccountLocked, tracer, ce.ErrAccountLocked)
+			return nil, ce.NewError(span, ce.CodeAuthLocked, "Account locked due to multiple failed attempts.", errors.New("multiple failed authentication attempts"))
 		}
 
-		return nil, ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgInvalidCredentials, tracer, err)
+		return nil, ce.NewError(span, ce.CodeAuthWrongPassword, ce.MsgInvalidCredentials, err)
 	}
-
 	if err := u.cache.Del(ctx, totalFailedAuthKey); err != nil {
 		return nil, err
 	}
@@ -175,7 +177,7 @@ func (u *authUsecase) Login(ctx context.Context, data *entities.GetAuth, request
 	sessionToken := utils.GenerateRandomToken()
 	accessToken, err := utils.GenerateJWTToken(auth.ID, auth.Role, auth.IsVerified)
 	if err != nil {
-		return nil, ce.NewError(ce.ErrCodeToken, ce.ErrMsgInternalServer, tracer, err)
+		return nil, ce.NewError(span, ce.CodeJWTGenerationFailed, ce.MsgInternalServer, err)
 	}
 
 	sessionData := entities.NewSession{
@@ -200,20 +202,24 @@ func (u *authUsecase) Login(ctx context.Context, data *entities.GetAuth, request
 }
 
 func (u *authUsecase) Logout(ctx context.Context, sessionToken string) error {
+	ctx, span := otel.Tracer(authErrorTracer).Start(ctx, "Logout")
+	defer span.End()
+
 	return u.su.RevokeSession(ctx, sessionToken)
 }
 
 func (u *authUsecase) ChangeEmail(ctx context.Context, authID int64, newEmail string) error {
-	tracer := AuthErrorTracer + ": ChangeEmail()"
+	ctx, span := otel.Tracer(authErrorTracer).Start(ctx, "ChangeEmail")
+	defer span.End()
 
-	return u.tx.ReturnError(ctx, func(ctx context.Context) error {
-		// Email cannot be changed if registered with oauth
+	return u.tx.WithTx(ctx, func(ctx context.Context) error {
 		auth, err := u.ar.GetByID(ctx, authID)
 		if err != nil {
 			return err
 		}
 		if auth.Password == nil {
-			return ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgOAuthEmailChange, tracer, ce.ErrOAuthEmailChange)
+			// email cannot be changed if registered with oauth
+			return ce.NewError(span, ce.CodeOAuthEmailChange, "OAuth account cannot change email.", errors.New("email change with oauth account"))
 		}
 
 		normalizedEmail := utils.NormalizeString(newEmail)
@@ -222,7 +228,7 @@ func (u *authUsecase) ChangeEmail(ctx context.Context, authID int64, newEmail st
 			return err
 		}
 		if exists {
-			return ce.NewError(ce.ErrCodeConflict, ce.ErrMsgEmailRegistered, tracer, ce.ErrEmailAlreadyRegistered)
+			return ce.NewError(span, ce.CodeAuthEmailConflict, "Email is already registered.", errors.New("registration email conflict"))
 		}
 
 		return u.ar.UpdateEmail(ctx, auth.ID, normalizedEmail)
@@ -230,23 +236,25 @@ func (u *authUsecase) ChangeEmail(ctx context.Context, authID int64, newEmail st
 }
 
 func (u *authUsecase) ChangePassword(ctx context.Context, authID int64, data *entities.NewPassword) error {
-	tracer := AuthErrorTracer + ": ChangePassword()"
+	ctx, span := otel.Tracer(authErrorTracer).Start(ctx, "ChangePassword")
+	defer span.End()
 
-	return u.tx.ReturnError(ctx, func(ctx context.Context) error {
+	return u.tx.WithTx(ctx, func(ctx context.Context) error {
 		auth, err := u.ar.GetByID(ctx, authID)
 		if err != nil {
 			return err
 		}
 		if auth.Password == nil {
-			return ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgOAuthPasswordChange, tracer, ce.ErrOAuthPasswordChange)
+			// password cannot be changed if registered with oauth
+			return ce.NewError(span, ce.CodeOAuthPasswordChange, "OAuth account cannot change password.", errors.New("password change with oauth account"))
 		}
 		if err := utils.ValidatePassword(*auth.Password, data.OldPassword); err != nil {
-			return ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgInvalidPassword, tracer, err)
+			return ce.NewError(span, ce.CodeAuthWrongPassword, "Invalid old password.", err)
 		}
 
 		hashedNewPassword, err := utils.HashPassword(data.NewPassword)
 		if err != nil {
-			return ce.NewError(ce.ErrCodePassHashing, ce.ErrMsgInternalServer, tracer, err)
+			return ce.NewError(span, ce.CodePasswordHashingFailed, ce.MsgInternalServer, err)
 		}
 
 		return u.ar.UpdatePassword(ctx, auth.ID, hashedNewPassword)
@@ -254,26 +262,32 @@ func (u *authUsecase) ChangePassword(ctx context.Context, authID int64, data *en
 }
 
 func (u *authUsecase) ForgotPassword(ctx context.Context, email string) error {
+	ctx, span := otel.Tracer(authErrorTracer).Start(ctx, "ForgotPassword")
+	defer span.End()
+
 	normalizedEmail := utils.NormalizeString(email)
 	auth, err := u.ar.GetByEmail(ctx, normalizedEmail)
 	if err != nil {
 		return err
 	}
 	if auth.Password == nil {
+		// oauth-registered accounts cannot reset password
+		// however, attempts at this won't return any error
 		return nil
 	}
 
 	token := utils.GenerateRandomToken()
-	tokenDuration := time.Duration(config.GetPasswordResetTokenDuration()) * time.Minute
+	tokenDuration := time.Duration(config.AuthGetResetTokenDuration()) * time.Minute
 	if err := u.cache.NewOrReplacePasswordResetToken(ctx, auth.ID, token, tokenDuration); err != nil {
 		return err
 	}
 
-	return u.email.SendPasswordResetToken(auth.Email, token)
+	return u.email.SendPasswordResetToken(ctx, auth.Email, token)
 }
 
 func (u *authUsecase) ResetPassword(ctx context.Context, data *entities.PasswordReset) error {
-	tracer := AuthErrorTracer + ": ResetPassword()"
+	ctx, span := otel.Tracer(authErrorTracer).Start(ctx, "ResetPassword")
+	defer span.End()
 
 	authID, err := u.cache.ConsumePasswordResetToken(ctx, data.Token)
 	if err != nil {
@@ -282,33 +296,37 @@ func (u *authUsecase) ResetPassword(ctx context.Context, data *entities.Password
 
 	hashedNewPassword, err := utils.HashPassword(data.NewPassword)
 	if err != nil {
-		return ce.NewError(ce.ErrCodePassHashing, ce.ErrMsgInternalServer, tracer, err)
+		return ce.NewError(span, ce.CodePasswordHashingFailed, ce.MsgInternalServer, err)
 	}
 
 	return u.ar.UpdatePassword(ctx, authID, hashedNewPassword)
 }
 
 func (u *authUsecase) ResendVerification(ctx context.Context, authID int64) error {
-	tracer := AuthErrorTracer + ": ResendVerification()"
+	ctx, span := otel.Tracer(authErrorTracer).Start(ctx, "ResendVerification")
+	defer span.End()
 
 	auth, err := u.ar.GetByID(ctx, authID)
 	if err != nil {
 		return err
 	}
 	if auth.IsVerified {
-		return ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgEmailVerified, tracer, ce.ErrEmailAlreadyVerified)
+		return ce.NewError(span, ce.CodeAuthVerified, "Email is already verified.", errors.New("account already verified"))
 	}
 
 	token := utils.GenerateRandomToken()
-	tokenDuration := time.Duration(config.GetEmailVerificationTokenDuration()) * time.Minute
+	tokenDuration := time.Duration(config.AuthGetVerifyTokenDuration()) * time.Minute
 	if err := u.cache.NewOrReplaceVerificationToken(ctx, auth.ID, token, tokenDuration); err != nil {
 		return err
 	}
 
-	return u.email.SendVerificationToken(auth.Email, token)
+	return u.email.SendVerificationToken(ctx, auth.Email, token)
 }
 
 func (u *authUsecase) VerifyEmail(ctx context.Context, token string) error {
+	ctx, span := otel.Tracer(authErrorTracer).Start(ctx, "VerifyEmail")
+	defer span.End()
+
 	authID, err := u.cache.ConsumeVerificationToken(ctx, token)
 	if err != nil {
 		return err
@@ -318,32 +336,39 @@ func (u *authUsecase) VerifyEmail(ctx context.Context, token string) error {
 }
 
 func (u *authUsecase) IsEmailRegistered(ctx context.Context, email string) (bool, error) {
+	ctx, span := otel.Tracer(authErrorTracer).Start(ctx, "IsEmailRegistered")
+	defer span.End()
+
 	normalizedEmail := utils.NormalizeString(email)
 	return u.ar.IsEmailRegistered(ctx, normalizedEmail)
 }
 
-func (u *authUsecase) IsPasswordResetTokenValid(ctx context.Context, token string) (bool, error) {
-	tokenKey := utils.GenerateDynamicRedisKey(constants.RedisKeyPasswordResetToken, token)
+func (u *authUsecase) IsResetTokenValid(ctx context.Context, token string) (bool, error) {
+	ctx, span := otel.Tracer(authErrorTracer).Start(ctx, "IsResetTokenValid")
+	defer span.End()
+
+	tokenKey := utils.CacheCreateKey(constants.RedisKeyPasswordResetToken, token)
 	return u.cache.Has(ctx, tokenKey)
 }
 
 func (u *authUsecase) RefreshSession(ctx context.Context, sessionToken string) (*entities.AuthToken, error) {
-	tracer := AuthErrorTracer + ": RefreshSession()"
+	ctx, span := otel.Tracer(authErrorTracer).Start(ctx, "RefreshSession")
+	defer span.End()
 
 	now := time.Now().UTC()
-	sessionDuration := time.Duration(config.GetSessionDuration()) * time.Minute
+	sessionDuration := time.Duration(config.AuthGetSessionDuration()) * time.Minute
 
 	var token entities.AuthToken
-	err := u.tx.ReturnError(ctx, func(ctx context.Context) error {
+	err := u.tx.WithTx(ctx, func(ctx context.Context) error {
 		session, err := u.su.GetSession(ctx, sessionToken)
 		if err != nil {
 			return err
 		}
 		if !session.ExpiresAt.After(now) {
-			return ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgInvalidCredentials, tracer, ce.ErrSessionExpired)
+			return ce.NewError(span, ce.CodeSessionExpired, ce.MsgInvalidCredentials, ce.ErrSessionExpired)
 		}
 		if session.RevokedAt != nil {
-			return ce.NewError(ce.ErrCodeInvalidAction, ce.ErrMsgInvalidCredentials, tracer, ce.ErrSessionRevoked)
+			return ce.NewError(span, ce.CodeSessionRevoked, ce.MsgInvalidCredentials, ce.ErrSessionRevoked)
 		}
 
 		auth, err := u.ar.GetByID(ctx, session.AuthID)
@@ -354,7 +379,7 @@ func (u *authUsecase) RefreshSession(ctx context.Context, sessionToken string) (
 		newSessionToken := utils.GenerateRandomToken()
 		newAccessToken, err := utils.GenerateJWTToken(auth.ID, auth.Role, auth.IsVerified)
 		if err != nil {
-			return ce.NewError(ce.ErrCodeToken, ce.ErrMsgInternalServer, tracer, err)
+			return ce.NewError(span, ce.CodeJWTGenerationFailed, ce.MsgInternalServer, err)
 		}
 
 		newSessionData := entities.ReissueSession{

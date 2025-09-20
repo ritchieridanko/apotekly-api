@@ -18,7 +18,7 @@ const (
 	maxPasswordLength int = 50
 )
 
-func PasswordValidator(fl validator.FieldLevel) bool {
+func passwordValidator(fl validator.FieldLevel) bool {
 	password := fl.Field().String()
 
 	if len(password) < minPasswordLength || len(password) > maxPasswordLength {

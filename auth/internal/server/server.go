@@ -25,8 +25,8 @@ type App struct {
 	router *gin.Engine
 	server *http.Server
 	db     *sql.DB
-	redis  *redis.Client
-	mailer *mailer.Mailer
+	cache  *redis.Client
+	mailer mailer.Mailer
 }
 
 func New() *App {
@@ -34,54 +34,55 @@ func New() *App {
 }
 
 func (a *App) Run() {
-	// Initialize .env configurations
+	// initialize configurations
 	config.Initialize()
 
-	// Initialize database and redis
-	db, redis, mailer := infras.Initialize()
+	// initialize infrastructures
+	db, cache, mailer, tracer := infras.Initialize()
 	a.db = db
-	a.redis = redis
+	a.cache = cache
 	a.mailer = mailer
 	defer a.db.Close()
-	defer a.redis.Close()
+	defer a.cache.Close()
 	defer a.mailer.Close()
+	defer tracer.Cleanup()
 
-	// Initialize dependency injections
-	router := di.SetupDependencies(a.db, a.redis, a.mailer)
+	// initialize dependencies
+	router := di.SetupDependencies(a.db, a.cache, a.mailer)
 	a.router = router
 
-	// Initialize validators
+	// initialize validators
 	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
 		if err := validators.Initialize(v); err != nil {
-			log.Fatalln("FATAL: failed to initialize validators:", err)
+			log.Fatalln("FATAL -> failed to initialize validators:", err)
 		}
 	}
 
-	// Create an HTTP server
+	// create HTTP server
 	a.server = &http.Server{
-		Addr:    config.GetServerBaseURL(),
+		Addr:    config.ServerGetBaseURL(),
 		Handler: a.router,
 	}
 
-	// Start the server
+	// start server
 	go func() {
-		log.Println("Starting server on", config.GetServerBaseURL())
+		log.Println("SUCCESS -> running server on:", config.ServerGetBaseURL())
 		if err := a.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalln("FATAL: failed to start server:", err)
+			log.Fatalln("FATAL -> failed to start server:", err)
 		}
 	}()
 
-	// Handle graceful shutdown
+	// handle graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("Shutting down server...")
+	log.Println("SHUTTING DOWN SERVER...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(config.GetServerTimeout())*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(config.ServerGetTimeout())*time.Second)
 	defer cancel()
 
 	if err := a.server.Shutdown(ctx); err != nil {
-		log.Println("Server forced to shutdown:", err)
+		log.Println("STOPPED -> server forced to shutdown:", err)
 	}
 }

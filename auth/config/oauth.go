@@ -1,49 +1,49 @@
 package config
 
 type oAuthConfig struct {
-	googleClientID     string
-	googleClientSecret string
-	googleRedirectURL  string
+	GoogleClientID     string
+	GoogleClientSecret string
+	GoogleRedirectURL  string
 
-	microsoftClientID     string
-	microsoftClientSecret string
-	microsoftRedirectURL  string
+	MicrosoftClientID     string
+	MicrosoftClientSecret string
+	MicrosoftRedirectURL  string
 }
 
 var oAuthCfg *oAuthConfig
 
-func LoadOAuthConfig() {
+func loadOAuthConfig() {
 	oAuthCfg = &oAuthConfig{
-		googleClientID:     GetEnv("GOOGLE_CLIENT_ID"),
-		googleClientSecret: GetEnv("GOOGLE_CLIENT_SECRET"),
-		googleRedirectURL:  GetEnv("GOOGLE_REDIRECT_URL"),
+		GoogleClientID:     getEnv("GOOGLE_CLIENT_ID"),
+		GoogleClientSecret: getEnv("GOOGLE_CLIENT_SECRET"),
+		GoogleRedirectURL:  getEnv("GOOGLE_REDIRECT_URL"),
 
-		microsoftClientID:     GetEnv("MICROSOFT_CLIENT_ID"),
-		microsoftClientSecret: GetEnv("MICROSOFT_CLIENT_SECRET"),
-		microsoftRedirectURL:  GetEnv("MICROSOFT_REDIRECT_URL"),
+		MicrosoftClientID:     getEnv("MICROSOFT_CLIENT_ID"),
+		MicrosoftClientSecret: getEnv("MICROSOFT_CLIENT_SECRET"),
+		MicrosoftRedirectURL:  getEnv("MICROSOFT_REDIRECT_URL"),
 	}
 }
 
-func GetGoogleClientID() (clientID string) {
-	return oAuthCfg.googleClientID
+func OAuthGoogleGetClientID() (id string) {
+	return oAuthCfg.GoogleClientID
 }
 
-func GetGoogleClientSecret() (secret string) {
-	return oAuthCfg.googleClientSecret
+func OAuthGoogleGetClientSecret() (secret string) {
+	return oAuthCfg.GoogleClientSecret
 }
 
-func GetGoogleRedirectURL() (url string) {
-	return oAuthCfg.googleRedirectURL
+func OAuthGoogleGetRedirectURL() (url string) {
+	return oAuthCfg.GoogleRedirectURL
 }
 
-func GetMicrosoftClientID() (clientID string) {
-	return oAuthCfg.microsoftClientID
+func OAuthMicrosoftGetClientID() (id string) {
+	return oAuthCfg.MicrosoftClientID
 }
 
-func GetMicrosoftClientSecret() (secret string) {
-	return oAuthCfg.microsoftClientSecret
+func OAuthMicrosoftGetClientSecret() (secret string) {
+	return oAuthCfg.MicrosoftClientSecret
 }
 
-func GetMicrosoftRedirectURL() (url string) {
-	return oAuthCfg.microsoftRedirectURL
+func OAuthMicrosoftGetRedirectURL() (url string) {
+	return oAuthCfg.MicrosoftRedirectURL
 }

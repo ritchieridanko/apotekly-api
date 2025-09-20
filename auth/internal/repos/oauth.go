@@ -2,29 +2,30 @@ package repos
 
 import (
 	"context"
-	"database/sql"
 
+	"github.com/ritchieridanko/apotekly-api/auth/internal/ce"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/entities"
-	"github.com/ritchieridanko/apotekly-api/auth/pkg/ce"
-	"github.com/ritchieridanko/apotekly-api/auth/pkg/dbtx"
+	"github.com/ritchieridanko/apotekly-api/auth/internal/services/db"
+	"go.opentelemetry.io/otel"
 )
 
-const OAuthErrorTracer = ce.OAuthRepoTracer
+const oAuthErrorTracer string = "repo.oauth"
 
 type OAuthRepo interface {
 	Create(ctx context.Context, authID int64, data *entities.NewOAuth) (oauthID int64, err error)
 }
 
 type oAuthRepo struct {
-	db *sql.DB
+	database db.DBService
 }
 
-func NewOAuthRepo(db *sql.DB) OAuthRepo {
-	return &oAuthRepo{db}
+func NewOAuthRepo(database db.DBService) OAuthRepo {
+	return &oAuthRepo{database}
 }
 
 func (r *oAuthRepo) Create(ctx context.Context, authID int64, data *entities.NewOAuth) (int64, error) {
-	tracer := OAuthErrorTracer + ": Create()"
+	ctx, span := otel.Tracer(oAuthErrorTracer).Start(ctx, "Create")
+	defer span.End()
 
 	query := `
 		INSERT INTO oauth (auth_id, provider, provider_uid)
@@ -32,12 +33,11 @@ func (r *oAuthRepo) Create(ctx context.Context, authID int64, data *entities.New
 		RETURNING id
 	`
 
-	executor := dbtx.GetSQLExecutor(ctx, r.db)
-	row := executor.QueryRowContext(ctx, query, authID, data.Provider, data.UID)
+	row := r.database.QueryRow(ctx, query, authID, data.Provider, data.UID)
 
 	var oauthID int64
 	if err := row.Scan(&oauthID); err != nil {
-		return 0, ce.NewError(ce.ErrCodeDBQuery, ce.ErrMsgInternalServer, tracer, err)
+		return 0, ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
 	}
 
 	return oauthID, nil

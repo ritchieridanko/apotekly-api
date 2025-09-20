@@ -1,39 +1,39 @@
 package config
 
 type serverConfig struct {
-	protocol string
-	host     string
-	port     string
-	timeout  int
+	Protocol string
+	Host     string
+	Port     string
+	Timeout  int
 }
 
 var serverCfg *serverConfig
 
-func LoadServerConfig() {
+func loadServerConfig() {
 	serverCfg = &serverConfig{
-		protocol: GetEnvWithFallback("SERVER_PROTOCOL", "http"),
-		host:     GetEnvWithFallback("SERVER_HOST", "localhost"),
-		port:     GetEnvWithFallback("SERVER_PORT", "9000"),
-		timeout:  GetNumberEnvWithFallback("GRACEFUL_TIMEOUT", 5),
+		Protocol: getEnvWithFallback("SERVER_PROTOCOL", "http"),
+		Host:     getEnvWithFallback("SERVER_HOST", "localhost"),
+		Port:     getEnvWithFallback("SERVER_PORT", "9000"),
+		Timeout:  getNumberEnvWithFallback("SERVER_TIMEOUT", 5),
 	}
 }
 
-func GetServerProtocol() (protocol string) {
-	return serverCfg.protocol
+func ServerGetProtocol() (protocol string) {
+	return serverCfg.Protocol
 }
 
-func GetServerHost() (host string) {
-	return serverCfg.host
+func ServerGetHost() (host string) {
+	return serverCfg.Host
 }
 
-func GetServerPort() (port string) {
-	return serverCfg.port
+func ServerGetPort() (port string) {
+	return serverCfg.Port
 }
 
-func GetServerTimeout() (timeout int) {
-	return serverCfg.timeout
+func ServerGetTimeout() (timeout int) {
+	return serverCfg.Timeout
 }
 
-func GetServerBaseURL() (baseURL string) {
-	return serverCfg.host + ":" + serverCfg.port
+func ServerGetBaseURL() (url string) {
+	return ServerGetHost() + ":" + ServerGetPort()
 }
