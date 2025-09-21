@@ -19,6 +19,7 @@ const userErrorTracer string = "usecase.user"
 
 type UserUsecase interface {
 	NewUser(ctx context.Context, authID int64, data *entities.NewUser) (user *entities.User, err error)
+	GetUser(ctx context.Context, authID int64) (user *entities.User, err error)
 }
 
 type userUsecase struct {
@@ -66,4 +67,8 @@ func (u *userUsecase) NewUser(ctx context.Context, authID int64, data *entities.
 	}
 
 	return user, nil
+}
+
+func (u *userUsecase) GetUser(ctx context.Context, authID int64) (*entities.User, error) {
+	return u.ur.GetByAuthID(ctx, authID)
 }

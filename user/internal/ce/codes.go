@@ -21,6 +21,7 @@ const (
 	CodeDBQueryExecution     internalErrorCode = "DB_QUERY_EXECUTION_ERROR"
 	CodeDBTransaction        internalErrorCode = "DB_TRANSACTION_ERROR"
 	CodeInvalidPayload       internalErrorCode = "INVALID_PAYLOAD_ERROR"
+	CodeUserNotFound         internalErrorCode = "USER_NOT_FOUND_ERROR"
 )
 
 // external error messages (for end-users)

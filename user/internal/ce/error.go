@@ -37,6 +37,8 @@ func (e *Error) ToExternalErrorCode() (externalCode int) {
 		return http.StatusBadRequest
 	case CodeAuthAudienceNotFound, CodeAuthTokenExpired, CodeAuthTokenMalformed, CodeAuthUnauthenticated:
 		return http.StatusUnauthorized
+	case CodeUserNotFound:
+		return http.StatusNotFound
 	case CodeDBDuplicateData:
 		return http.StatusConflict
 	case CodeAuthTokenParsing, CodeContextValueNotFound, CodeDBQueryExecution, CodeDBTransaction:

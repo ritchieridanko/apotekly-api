@@ -14,6 +14,7 @@ const userErrorTracer string = "repo.user"
 
 type UserRepo interface {
 	Create(ctx context.Context, authID int64, data *entities.NewUser) (user *entities.User, err error)
+	GetByAuthID(ctx context.Context, authID int64) (user *entities.User, err error)
 	HasUser(ctx context.Context, authID int64) (exists bool, err error)
 }
 
@@ -59,6 +60,41 @@ func (r *userRepo) Create(ctx context.Context, authID int64, data *entities.NewU
 		&user.ProfilePicture,
 	)
 	if err != nil {
+		return nil, ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
+	}
+
+	return &user, nil
+}
+
+func (r *userRepo) GetByAuthID(ctx context.Context, authID int64) (*entities.User, error) {
+	ctx, span := otel.Tracer(userErrorTracer).Start(ctx, "GetByAuthID")
+	defer span.End()
+
+	query := `
+		SELECT user_id, name, bio, sex, birthdate, phone, profile_picture
+		FROM users
+		WHERE auth_id = $1 AND deleted_at IS NULL
+	`
+	if r.database.IsWithinTx(ctx) {
+		query += " FOR UPDATE"
+	}
+
+	row := r.database.QueryRow(ctx, query, authID)
+
+	var user entities.User
+	err := row.Scan(
+		&user.UserID,
+		&user.Name,
+		&user.Bio,
+		&user.Sex,
+		&user.Birthdate,
+		&user.Phone,
+		&user.ProfilePicture,
+	)
+	if err != nil {
+		if errors.Is(err, ce.ErrDBQueryNoRows) {
+			return nil, ce.NewError(span, ce.CodeUserNotFound, "User does not exist.", err)
+		}
 		return nil, ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
 	}
 

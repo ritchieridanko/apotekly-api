@@ -8,6 +8,8 @@ import (
 
 func userRouters(h handlers.UserHandler) func(*gin.RouterGroup) {
 	return func(rg *gin.RouterGroup) {
+		rg.GET("/me", middlewares.Authenticate(), h.GetUser)
+
 		rg.POST("", middlewares.Authenticate(), h.NewUser)
 	}
 }
