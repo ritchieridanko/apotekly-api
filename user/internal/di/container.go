@@ -12,7 +12,7 @@ import (
 )
 
 func SetupDependencies(dbInstance *sql.DB) (router *gin.Engine) {
-	database := db.NewDatabase(dbInstance)
+	database := db.NewService(dbInstance)
 	txManager := db.NewTxManager(dbInstance)
 
 	ur := repos.NewUserRepo(database)
@@ -21,5 +21,5 @@ func SetupDependencies(dbInstance *sql.DB) (router *gin.Engine) {
 
 	uh := handlers.NewUserHandler(uu)
 
-	return routers.Initialize(routers.UserRouters(uh))
+	return routers.Initialize(uh)
 }

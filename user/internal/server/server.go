@@ -48,13 +48,13 @@ func (a *App) Run() {
 
 	// start server
 	go func() {
-		log.Println("SUCCESS -> started server on:", config.ServerGetBaseURL())
+		log.Println("SUCCESS -> running server on:", config.ServerGetBaseURL())
 		if err := a.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalln("FATAL -> failed to start server:", err)
 		}
 	}()
 
-	// Handle graceful shutdown
+	// handle graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
@@ -65,6 +65,6 @@ func (a *App) Run() {
 	defer cancel()
 
 	if err := a.server.Shutdown(ctx); err != nil {
-		log.Println("WARNING -> server forced to shutdown:", err)
+		log.Println("STOPPED -> server forced to shutdown:", err)
 	}
 }

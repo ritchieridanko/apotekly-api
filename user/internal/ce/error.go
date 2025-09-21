@@ -28,7 +28,7 @@ func NewError(span trace.Span, code internalErrorCode, message string, err error
 }
 
 func (e *Error) Error() (err string) {
-	return fmt.Sprintf("[%s] %s: %v\n", e.Code, e.Message, e.Err)
+	return fmt.Sprintf("[%s] -> %v", e.Code, e.Err)
 }
 
 func (e *Error) ToExternalErrorCode() (externalCode int) {

@@ -10,7 +10,7 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
-const UserErrorTracer string = "user.repo"
+const userErrorTracer string = "repo.user"
 
 type UserRepo interface {
 	Create(ctx context.Context, authID int64, data *entities.NewUser) (user *entities.User, err error)
@@ -18,15 +18,15 @@ type UserRepo interface {
 }
 
 type userRepo struct {
-	database db.Database
+	database db.DBService
 }
 
-func NewUserRepo(database db.Database) UserRepo {
+func NewUserRepo(database db.DBService) UserRepo {
 	return &userRepo{database}
 }
 
 func (r *userRepo) Create(ctx context.Context, authID int64, data *entities.NewUser) (*entities.User, error) {
-	ctx, span := otel.Tracer(UserErrorTracer).Start(ctx, "Create")
+	ctx, span := otel.Tracer(userErrorTracer).Start(ctx, "Create")
 	defer span.End()
 
 	query := `
@@ -66,11 +66,10 @@ func (r *userRepo) Create(ctx context.Context, authID int64, data *entities.NewU
 }
 
 func (r *userRepo) HasUser(ctx context.Context, authID int64) (bool, error) {
-	ctx, span := otel.Tracer(UserErrorTracer).Start(ctx, "HasUser")
+	ctx, span := otel.Tracer(userErrorTracer).Start(ctx, "HasUser")
 	defer span.End()
 
 	query := "SELECT 1 FROM users WHERE auth_id = $1 AND deleted_at IS NULL"
-
 	if r.database.IsWithinTx(ctx) {
 		query += " FOR UPDATE"
 	}
@@ -79,7 +78,7 @@ func (r *userRepo) HasUser(ctx context.Context, authID int64) (bool, error) {
 
 	var exists int
 	if err := row.Scan(&exists); err != nil {
-		if errors.Is(err, ce.ErrQueryNoRows) {
+		if errors.Is(err, ce.ErrDBQueryNoRows) {
 			return false, nil
 		}
 		return false, ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)

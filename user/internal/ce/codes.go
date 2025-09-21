@@ -2,6 +2,7 @@ package ce
 
 import (
 	"database/sql"
+	"errors"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -31,7 +32,8 @@ const (
 
 // internal error logs
 var (
-	ErrQueryNoRows    error = sql.ErrNoRows
+	ErrDBAffectNoRows error = errors.New("query execution affected no rows")
+	ErrDBQueryNoRows  error = sql.ErrNoRows
 	ErrTokenExpired   error = jwt.ErrTokenExpired
 	ErrTokenMalformed error = jwt.ErrTokenMalformed
 )

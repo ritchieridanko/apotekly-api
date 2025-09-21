@@ -12,11 +12,11 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
-const AuthErrorTracer string = "auth.middleware"
+const authErrorTracer string = "middleware.auth"
 
 func Authenticate() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		ctxWithTracer, span := otel.Tracer(AuthErrorTracer).Start(ctx.Request.Context(), "Authenticate")
+		ctxWithTracer, span := otel.Tracer(authErrorTracer).Start(ctx.Request.Context(), "Authenticate")
 		defer span.End()
 
 		authHeader := ctx.GetHeader("Authorization")
@@ -41,8 +41,7 @@ func Authenticate() gin.HandlerFunc {
 			return
 		}
 
-		token := authSlice[1]
-		claim, err := utils.ParseJWTToken(token)
+		claim, err := utils.ParseJWTToken(authSlice[1])
 		if err != nil {
 			switch {
 			case errors.Is(err, ce.ErrTokenExpired):

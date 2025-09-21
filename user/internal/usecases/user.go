@@ -13,9 +13,9 @@ import (
 )
 
 // TODO
-// (1): Implement Image Upload to Cloud
+// (1): Implement image upload to cloud
 
-const UserErrorTracer string = "user.usecase"
+const userErrorTracer string = "usecase.user"
 
 type UserUsecase interface {
 	NewUser(ctx context.Context, authID int64, data *entities.NewUser) (user *entities.User, err error)
@@ -31,7 +31,7 @@ func NewUserUsecase(ur repos.UserRepo, tx db.TxManager) UserUsecase {
 }
 
 func (u *userUsecase) NewUser(ctx context.Context, authID int64, data *entities.NewUser) (*entities.User, error) {
-	ctx, span := otel.Tracer(UserErrorTracer).Start(ctx, "NewUser")
+	ctx, span := otel.Tracer(userErrorTracer).Start(ctx, "NewUser")
 	defer span.End()
 
 	var user *entities.User
@@ -41,7 +41,7 @@ func (u *userUsecase) NewUser(ctx context.Context, authID int64, data *entities.
 			return err
 		}
 		if exists {
-			return ce.NewError(span, ce.CodeDBDuplicateData, "User already exists", errors.New("auth id conflict detected"))
+			return ce.NewError(span, ce.CodeDBDuplicateData, "User already exists", errors.New("auth id conflict"))
 		}
 
 		newData := entities.NewUser{

@@ -24,9 +24,9 @@ type queryExecutor interface {
 	QueryRowContext(ctx context.Context, query string, args ...any) (row *sql.Row)
 }
 
-func getQueryExecutor(ctx context.Context, dbInstance *sql.DB) (executor queryExecutor) {
+func getQueryExecutor(ctx context.Context, instance *sql.DB) (executor queryExecutor) {
 	if tx := getTxFromContext(ctx); tx != nil {
 		return tx
 	}
-	return dbInstance
+	return instance
 }

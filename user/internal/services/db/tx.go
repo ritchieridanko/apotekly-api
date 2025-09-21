@@ -16,12 +16,12 @@ type txManager struct {
 	instance *sql.DB
 }
 
-func NewTxManager(instance *sql.DB) (tx TxManager) {
+func NewTxManager(instance *sql.DB) TxManager {
 	return &txManager{instance}
 }
 
 func (m *txManager) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
-	ctx, span := otel.Tracer("db.txmanager").Start(ctx, "WithTx")
+	ctx, span := otel.Tracer("service.db.tx_manager").Start(ctx, "WithTx")
 	defer span.End()
 
 	tx := getTxFromContext(ctx)

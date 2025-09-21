@@ -14,9 +14,9 @@ import (
 )
 
 // TODO
-// (1): Implement Image Upload to Cloud
+// (1): Implement image upload to cloud
 
-const UserErrorTracer string = "user.handler"
+const userErrorTracer string = "handler.user"
 
 type UserHandler interface {
 	NewUser(ctx *gin.Context)
@@ -31,7 +31,7 @@ func NewUserHandler(uu usecases.UserUsecase) UserHandler {
 }
 
 func (h *userHandler) NewUser(ctx *gin.Context) {
-	ctxWithTracer, span := otel.Tracer(UserErrorTracer).Start(ctx.Request.Context(), "NewUser")
+	ctxWithTracer, span := otel.Tracer(userErrorTracer).Start(ctx.Request.Context(), "NewUser")
 	defer span.End()
 
 	authID, err := utils.ContextGetAuthID(ctxWithTracer)
@@ -80,5 +80,5 @@ func (h *userHandler) NewUser(ctx *gin.Context) {
 		ProfilePicture: user.ProfilePicture,
 	}
 
-	utils.SetResponse(ctx, "User created successfully", response, http.StatusCreated)
+	utils.SetResponse(ctx, "User created successfully.", response, http.StatusCreated)
 }

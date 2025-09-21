@@ -6,7 +6,7 @@ import (
 	"github.com/ritchieridanko/apotekly-api/user/internal/middlewares"
 )
 
-func UserRouters(h handlers.UserHandler) func(*gin.RouterGroup) {
+func userRouters(h handlers.UserHandler) func(*gin.RouterGroup) {
 	return func(rg *gin.RouterGroup) {
 		rg.POST("", middlewares.Authenticate(), h.NewUser)
 	}
