@@ -6,6 +6,8 @@ require github.com/golang-migrate/migrate/v4 v4.19.0
 
 require (
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
+	github.com/creasty/defaults v1.7.0 // indirect
+	github.com/gorilla/schema v1.4.1 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.2 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.38.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.7.1 // indirect
@@ -17,6 +19,7 @@ require (
 require (
 	github.com/bytedance/sonic v1.14.0 // indirect
 	github.com/bytedance/sonic/loader v0.3.0 // indirect
+	github.com/cloudinary/cloudinary-go/v2 v2.13.0
 	github.com/cloudwego/base64x v0.1.6 // indirect
 	github.com/cloudwego/iasm v0.2.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.10 // indirect

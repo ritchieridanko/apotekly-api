@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/cloudinary/cloudinary-go/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/ritchieridanko/apotekly-api/user/config"
 	"github.com/ritchieridanko/apotekly-api/user/internal/di"
@@ -17,9 +18,10 @@ import (
 )
 
 type App struct {
-	router *gin.Engine
-	server *http.Server
-	db     *sql.DB
+	router  *gin.Engine
+	server  *http.Server
+	db      *sql.DB
+	storage *cloudinary.Cloudinary
 }
 
 func New() *App {
@@ -31,13 +33,14 @@ func (a *App) Run() {
 	config.Initialize()
 
 	// initialize infrastructures
-	db, tracer := infras.Initialize()
+	db, tracer, storage := infras.Initialize()
 	a.db = db
+	a.storage = storage
 	defer a.db.Close()
 	defer tracer.Cleanup()
 
 	// initialize dependencies
-	router := di.SetupDependencies(a.db)
+	router := di.SetupDependencies(a.db, a.storage)
 	a.router = router
 
 	// create HTTP server

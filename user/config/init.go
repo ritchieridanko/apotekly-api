@@ -15,5 +15,6 @@ func Initialize() {
 	loadAuthConfig()
 	loadDBConfig()
 	loadServerConfig()
+	loadStorageConfig()
 	loadTracerConfig()
 }

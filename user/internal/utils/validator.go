@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"fmt"
+	"net/http"
 	"regexp"
 	"strings"
 	"time"
@@ -8,21 +10,51 @@ import (
 	"github.com/ritchieridanko/apotekly-api/user/internal/dto"
 )
 
-func ValidateNewUser(request dto.ReqNewUser) (isValid bool) {
-	if len(strings.TrimSpace(request.Name)) < 3 || len(request.Name) > 50 {
-		return false
+const (
+	nameMinLength int = 3
+	nameMaxLength int = 50
+	bioMaxLength  int = 100
+)
+
+var (
+	phoneRegex = regexp.MustCompile(`^\d{9,15}$`)
+
+	acceptableFileTypes []string = []string{"image/png", "image/jpeg"}
+)
+
+func ValidateNewUser(request dto.ReqNewUser) (errString string) {
+	if len(strings.TrimSpace(request.Name)) < nameMinLength || len(request.Name) > nameMaxLength {
+		return fmt.Sprintf("Name must be between %d and %d characters.", nameMinLength, nameMaxLength)
 	}
-	if request.Bio != nil && len(*request.Bio) > 100 {
-		return false
+	if request.Bio != nil && len(*request.Bio) > bioMaxLength {
+		return fmt.Sprintf("Bio must not exceed %d characters.", bioMaxLength)
 	}
 	if request.Sex != nil && (*request.Sex < 0 || *request.Sex > 2) {
-		return false
+		return "Sex is invalid."
 	}
 	if request.Birthdate != nil && request.Birthdate.UTC().After(time.Now().UTC()) {
-		return false
+		return "Birthdate is invalid."
 	}
-	if request.Phone != nil && !regexp.MustCompile(`^\d{9,15}$`).MatchString(*request.Phone) {
-		return false
+	if request.Phone != nil && !phoneRegex.MatchString(*request.Phone) {
+		return "Phone is invalid."
 	}
-	return true
+	return ""
+}
+
+func ValidateImageFile(imageBuf []byte) (err error) {
+	// validate content type from first 512 bytes
+	fileType := http.DetectContentType(imageBuf[:min(len(imageBuf), 512)])
+
+	allowed := false
+	for _, acceptableType := range acceptableFileTypes {
+		if fileType == acceptableType {
+			allowed = true
+			break
+		}
+	}
+	if !allowed {
+		return fmt.Errorf("invalid file type: %s", fileType)
+	}
+
+	return nil
 }

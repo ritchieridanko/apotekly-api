@@ -2,19 +2,21 @@ package handlers
 
 import (
 	"errors"
+	"log"
+	"mime/multipart"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
+	"github.com/ritchieridanko/apotekly-api/user/config"
 	"github.com/ritchieridanko/apotekly-api/user/internal/ce"
+	"github.com/ritchieridanko/apotekly-api/user/internal/constants"
 	"github.com/ritchieridanko/apotekly-api/user/internal/dto"
 	"github.com/ritchieridanko/apotekly-api/user/internal/entities"
 	"github.com/ritchieridanko/apotekly-api/user/internal/usecases"
 	"github.com/ritchieridanko/apotekly-api/user/internal/utils"
 	"go.opentelemetry.io/otel"
 )
-
-// TODO
-// (1): Implement image upload to cloud
 
 const userErrorTracer string = "handler.user"
 
@@ -35,6 +37,10 @@ func (h *userHandler) NewUser(ctx *gin.Context) {
 	ctxWithTracer, span := otel.Tracer(userErrorTracer).Start(ctx.Request.Context(), "NewUser")
 	defer span.End()
 
+	// limit request body size to max size
+	maxSize := constants.SizeMB * config.StorageGetImageMaxSize()
+	ctx.Request.Body = http.MaxBytesReader(ctx.Writer, ctx.Request.Body, maxSize)
+
 	authID, err := utils.ContextGetAuthID(ctxWithTracer)
 	if err != nil {
 		err := ce.NewError(span, ce.CodeContextValueNotFound, ce.MsgInternalServer, err)
@@ -43,14 +49,14 @@ func (h *userHandler) NewUser(ctx *gin.Context) {
 	}
 
 	var payload dto.ReqNewUser
-	if err := ctx.ShouldBindJSON(&payload); err != nil {
+	if err := ctx.ShouldBindWith(&payload, binding.FormMultipart); err != nil {
 		err := ce.NewError(span, ce.CodeInvalidPayload, ce.MsgInvalidPayload, err)
 		ctx.Error(err)
 		return
 	}
 
-	if !utils.ValidateNewUser(payload) {
-		err := ce.NewError(span, ce.CodeInvalidPayload, ce.MsgInvalidPayload, errors.New("invalid payload"))
+	if validateErr := utils.ValidateNewUser(payload); validateErr != "" {
+		err := ce.NewError(span, ce.CodeInvalidPayload, validateErr, errors.New("invalid payload"))
 		ctx.Error(err)
 		return
 	}
@@ -63,9 +69,24 @@ func (h *userHandler) NewUser(ctx *gin.Context) {
 		Phone:     payload.Phone,
 	}
 
-	// TODO (1)
+	var image multipart.File
+	if payload.Image != nil {
+		file, err := payload.Image.Open()
+		if err != nil {
+			log.Println("FAIL -> failed to open image:", err)
+		} else {
+			defer file.Close()
 
-	user, err := h.uu.NewUser(ctxWithTracer, authID, &data)
+			if payload.Image.Size > maxSize {
+				err := ce.NewError(span, ce.CodeInvalidPayload, "File size exceeds limit.", errors.New("file size exceeds maximum size"))
+				ctx.Error(err)
+				return
+			}
+			image = file
+		}
+	}
+
+	user, err := h.uu.NewUser(ctxWithTracer, authID, &data, image)
 	if err != nil {
 		ctx.Error(err)
 		return

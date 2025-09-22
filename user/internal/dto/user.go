@@ -1,17 +1,19 @@
 package dto
 
 import (
+	"mime/multipart"
 	"time"
 
 	"github.com/google/uuid"
 )
 
 type ReqNewUser struct {
-	Name      string     `json:"name" binding:"required"`
-	Bio       *string    `json:"bio,omitempty"`
-	Sex       *int16     `json:"sex,omitempty"`
-	Birthdate *time.Time `json:"birthdate,omitempty"`
-	Phone     *string    `json:"phone,omitempty"`
+	Name      string                `form:"name" binding:"required"`
+	Bio       *string               `form:"bio"`
+	Sex       *int16                `form:"sex"`
+	Birthdate *time.Time            `form:"birthdate" time_format:"2006-01-02"`
+	Phone     *string               `form:"phone"`
+	Image     *multipart.FileHeader `form:"image"`
 }
 
 type RespNewUser struct {
