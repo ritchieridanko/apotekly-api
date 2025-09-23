@@ -25,3 +25,11 @@ type NewUser struct {
 	Phone          *string
 	ProfilePicture *string
 }
+
+type UserUpdate struct {
+	Name      *string
+	Bio       *string
+	Sex       *int16
+	Birthdate *time.Time
+	Phone     *string
+}

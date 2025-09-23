@@ -22,6 +22,7 @@ const userErrorTracer string = "usecase.user"
 type UserUsecase interface {
 	NewUser(ctx context.Context, authID int64, data *entities.NewUser, image multipart.File) (user *entities.User, err error)
 	GetUser(ctx context.Context, authID int64) (user *entities.User, err error)
+	UpdateUser(ctx context.Context, authID int64, data *entities.UserUpdate) (err error)
 	ChangeProfilePicture(ctx context.Context, authID int64, image multipart.File) (err error)
 }
 
@@ -87,6 +88,13 @@ func (u *userUsecase) NewUser(ctx context.Context, authID int64, data *entities.
 
 func (u *userUsecase) GetUser(ctx context.Context, authID int64) (*entities.User, error) {
 	return u.ur.GetByAuthID(ctx, authID)
+}
+
+func (u *userUsecase) UpdateUser(ctx context.Context, authID int64, data *entities.UserUpdate) error {
+	ctx, span := otel.Tracer(userErrorTracer).Start(ctx, "UpdateUser")
+	defer span.End()
+
+	return u.ur.UpdateUser(ctx, authID, data)
 }
 
 func (u *userUsecase) ChangeProfilePicture(ctx context.Context, authID int64, image multipart.File) error {

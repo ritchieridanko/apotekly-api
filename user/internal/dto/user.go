@@ -25,3 +25,11 @@ type RespNewUser struct {
 	Phone          *string    `json:"phone"`
 	ProfilePicture *string    `json:"profile_picture"`
 }
+
+type ReqUserUpdate struct {
+	Name      *string    `json:"name,omitempty"`
+	Bio       *string    `json:"bio,omitempty"`
+	Sex       *int16     `json:"sex,omitempty"`
+	Birthdate *time.Time `json:"birthdate,omitempty"`
+	Phone     *string    `json:"phone,omitempty"`
+}

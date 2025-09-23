@@ -41,6 +41,25 @@ func ValidateNewUser(request dto.ReqNewUser) (errString string) {
 	return ""
 }
 
+func ValidateUserUpdate(request dto.ReqUserUpdate) (errString string) {
+	if request.Name != nil && (len(strings.TrimSpace(*request.Name)) < nameMinLength || len(*request.Name) > nameMaxLength) {
+		return fmt.Sprintf("Name must be between %d and %d characters.", nameMinLength, nameMaxLength)
+	}
+	if request.Bio != nil && len(*request.Bio) > bioMaxLength {
+		return fmt.Sprintf("Bio must not exceed %d characters.", bioMaxLength)
+	}
+	if request.Sex != nil && (*request.Sex < 0 || *request.Sex > 2) {
+		return "Sex is invalid."
+	}
+	if request.Birthdate != nil && request.Birthdate.UTC().After(time.Now().UTC()) {
+		return "Birthdate is invalid."
+	}
+	if request.Phone != nil && !phoneRegex.MatchString(*request.Phone) {
+		return "Phone is invalid."
+	}
+	return ""
+}
+
 func ValidateImageFile(imageBuf []byte) (err error) {
 	// validate content type from first 512 bytes
 	fileType := http.DetectContentType(imageBuf[:min(len(imageBuf), 512)])

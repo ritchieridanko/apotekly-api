@@ -17,6 +17,7 @@ type UserRepo interface {
 	Create(ctx context.Context, authID int64, data *entities.NewUser) (user *entities.User, err error)
 	GetByAuthID(ctx context.Context, authID int64) (user *entities.User, err error)
 	GetUserID(ctx context.Context, authID int64) (userID uuid.UUID, err error)
+	UpdateUser(ctx context.Context, authID int64, data *entities.UserUpdate) (err error)
 	UpdateProfilePicture(ctx context.Context, authID int64, profilePicture string) (err error)
 	HasUser(ctx context.Context, authID int64) (exists bool, err error)
 }
@@ -124,6 +125,34 @@ func (r *userRepo) GetUserID(ctx context.Context, authID int64) (uuid.UUID, erro
 	}
 
 	return userID, nil
+}
+
+func (r *userRepo) UpdateUser(ctx context.Context, authID int64, data *entities.UserUpdate) error {
+	ctx, span := otel.Tracer(userErrorTracer).Start(ctx, "UpdateUser")
+	defer span.End()
+
+	query := `
+		UPDATE users
+		SET
+			name = COALESCE($1, name),
+			bio = COALESCE($2, bio),
+			sex = COALESCE($3, sex),
+			birthdate = COALESCE($4, birthdate),
+			phone = COALESCE($5, phone),
+			updated_at = NOW()
+		WHERE
+			auth_id = $6
+			AND deleted_at IS NULL
+	`
+
+	if err := r.database.Execute(ctx, query, data.Name, data.Bio, data.Sex, data.Birthdate, data.Phone, authID); err != nil {
+		if errors.Is(err, ce.ErrDBAffectNoRows) {
+			return ce.NewError(span, ce.CodeAuthNotFound, ce.MsgInvalidCredentials, err)
+		}
+		return ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
+	}
+
+	return nil
 }
 
 func (r *userRepo) UpdateProfilePicture(ctx context.Context, authID int64, profilePicture string) error {

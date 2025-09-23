@@ -23,6 +23,7 @@ const userErrorTracer string = "handler.user"
 type UserHandler interface {
 	NewUser(ctx *gin.Context)
 	GetUser(ctx *gin.Context)
+	UpdateUser(ctx *gin.Context)
 	ChangeProfilePicture(ctx *gin.Context)
 }
 
@@ -134,6 +135,46 @@ func (h *userHandler) GetUser(ctx *gin.Context) {
 	}
 
 	utils.SetResponse(ctx, "ok", response, http.StatusOK)
+}
+
+func (h *userHandler) UpdateUser(ctx *gin.Context) {
+	ctxWithTracer, span := otel.Tracer(userErrorTracer).Start(ctx.Request.Context(), "UpdateUser")
+	defer span.End()
+
+	authID, err := utils.ContextGetAuthID(ctxWithTracer)
+	if err != nil {
+		err := ce.NewError(span, ce.CodeContextValueNotFound, ce.MsgInternalServer, err)
+		ctx.Error(err)
+		return
+	}
+
+	var payload dto.ReqUserUpdate
+	if err := ctx.ShouldBindJSON(&payload); err != nil {
+		err := ce.NewError(span, ce.CodeInvalidPayload, ce.MsgInvalidPayload, err)
+		ctx.Error(err)
+		return
+	}
+
+	if validateErr := utils.ValidateUserUpdate(payload); validateErr != "" {
+		err := ce.NewError(span, ce.CodeInvalidPayload, validateErr, errors.New("invalid payload"))
+		ctx.Error(err)
+		return
+	}
+
+	data := entities.UserUpdate{
+		Name:      payload.Name,
+		Bio:       payload.Bio,
+		Sex:       payload.Sex,
+		Birthdate: payload.Birthdate,
+		Phone:     payload.Phone,
+	}
+
+	if err := h.uu.UpdateUser(ctxWithTracer, authID, &data); err != nil {
+		ctx.Error(err)
+		return
+	}
+
+	utils.SetResponse(ctx, "Data updated successfully.", nil, http.StatusOK)
 }
 
 func (h *userHandler) ChangeProfilePicture(ctx *gin.Context) {
