@@ -35,13 +35,25 @@ func (e *Error) ToExternalErrorCode() (externalCode int) {
 	switch e.Code {
 	case CodeInvalidPayload:
 		return http.StatusBadRequest
-	case CodeAuthAudienceNotFound, CodeAuthTokenExpired, CodeAuthTokenMalformed, CodeAuthUnauthenticated:
+	case
+		CodeAuthAudienceNotFound,
+		CodeAuthNotFound,
+		CodeAuthTokenExpired,
+		CodeAuthTokenMalformed,
+		CodeAuthUnauthenticated:
 		return http.StatusUnauthorized
 	case CodeUserNotFound:
 		return http.StatusNotFound
 	case CodeDBDuplicateData:
 		return http.StatusConflict
-	case CodeAuthTokenParsing, CodeContextValueNotFound, CodeDBQueryExecution, CodeDBTransaction:
+	case
+		CodeAuthTokenParsing,
+		CodeContextValueNotFound,
+		CodeDBQueryExecution,
+		CodeDBTransaction,
+		CodeFileBuffer,
+		CodeFileUploadFailed,
+		CodeRequestFile:
 		return http.StatusInternalServerError
 	default:
 		return http.StatusInternalServerError

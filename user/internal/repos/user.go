@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
 	"github.com/ritchieridanko/apotekly-api/user/internal/ce"
 	"github.com/ritchieridanko/apotekly-api/user/internal/entities"
 	"github.com/ritchieridanko/apotekly-api/user/internal/services/db"
@@ -15,6 +16,8 @@ const userErrorTracer string = "repo.user"
 type UserRepo interface {
 	Create(ctx context.Context, authID int64, data *entities.NewUser) (user *entities.User, err error)
 	GetByAuthID(ctx context.Context, authID int64) (user *entities.User, err error)
+	GetUserID(ctx context.Context, authID int64) (userID uuid.UUID, err error)
+	UpdateProfilePicture(ctx context.Context, authID int64, profilePicture string) (err error)
 	HasUser(ctx context.Context, authID int64) (exists bool, err error)
 }
 
@@ -99,6 +102,48 @@ func (r *userRepo) GetByAuthID(ctx context.Context, authID int64) (*entities.Use
 	}
 
 	return &user, nil
+}
+
+func (r *userRepo) GetUserID(ctx context.Context, authID int64) (uuid.UUID, error) {
+	ctx, span := otel.Tracer(userErrorTracer).Start(ctx, "GetUserID")
+	defer span.End()
+
+	query := "SELECT user_id FROM users WHERE auth_id = $1 AND deleted_at IS NULL"
+	if r.database.IsWithinTx(ctx) {
+		query += " FOR UPDATE"
+	}
+
+	row := r.database.QueryRow(ctx, query, authID)
+
+	var userID uuid.UUID
+	if err := row.Scan(&userID); err != nil {
+		if errors.Is(err, ce.ErrDBQueryNoRows) {
+			return uuid.Nil, ce.NewError(span, ce.CodeAuthNotFound, ce.MsgInvalidCredentials, err)
+		}
+		return uuid.Nil, ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
+	}
+
+	return userID, nil
+}
+
+func (r *userRepo) UpdateProfilePicture(ctx context.Context, authID int64, profilePicture string) error {
+	ctx, span := otel.Tracer(userErrorTracer).Start(ctx, "UpdateProfilePicture")
+	defer span.End()
+
+	query := `
+		UPDATE users
+		SET profile_picture = $1, updated_at = NOW()
+		WHERE auth_id = $2 AND deleted_at IS NULL
+	`
+
+	if err := r.database.Execute(ctx, query, profilePicture, authID); err != nil {
+		if errors.Is(err, ce.ErrDBAffectNoRows) {
+			return ce.NewError(span, ce.CodeAuthNotFound, ce.MsgInvalidCredentials, err)
+		}
+		return ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
+	}
+
+	return nil
 }
 
 func (r *userRepo) HasUser(ctx context.Context, authID int64) (bool, error) {

@@ -11,5 +11,7 @@ func userRouters(h handlers.UserHandler) func(*gin.RouterGroup) {
 		rg.GET("/me", middlewares.Authenticate(), h.GetUser)
 
 		rg.POST("", middlewares.Authenticate(), h.NewUser)
+
+		rg.PATCH("/me/profile-picture", middlewares.Authenticate(), h.ChangeProfilePicture)
 	}
 }

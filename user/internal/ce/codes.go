@@ -12,6 +12,7 @@ type internalErrorCode string
 // internal error codes (for logs/debugging)
 const (
 	CodeAuthAudienceNotFound internalErrorCode = "AUTH_AUDIENCE_NOT_FOUND_ERROR"
+	CodeAuthNotFound         internalErrorCode = "AUTH_NOT_FOUND_ERROR"
 	CodeAuthTokenExpired     internalErrorCode = "AUTH_TOKEN_EXPIRED_ERROR"
 	CodeAuthTokenMalformed   internalErrorCode = "AUTH_TOKEN_MALFORMED_ERROR"
 	CodeAuthTokenParsing     internalErrorCode = "AUTH_TOKEN_PARSING_ERROR"
@@ -20,6 +21,8 @@ const (
 	CodeDBDuplicateData      internalErrorCode = "DB_DUPLICATE_DATA_ERROR"
 	CodeDBQueryExecution     internalErrorCode = "DB_QUERY_EXECUTION_ERROR"
 	CodeDBTransaction        internalErrorCode = "DB_TRANSACTION_ERROR"
+	CodeFileBuffer           internalErrorCode = "FILE_BUFFER_ERROR"
+	CodeFileUploadFailed     internalErrorCode = "FILE_UPLOAD_FAILED_ERROR"
 	CodeInvalidPayload       internalErrorCode = "INVALID_PAYLOAD_ERROR"
 	CodeRequestFile          internalErrorCode = "REQUEST_FILE_ERROR"
 	CodeUserNotFound         internalErrorCode = "USER_NOT_FOUND_ERROR"
@@ -27,9 +30,10 @@ const (
 
 // external error messages (for end-users)
 const (
-	MsgInternalServer  string = "Internal server error."
-	MsgInvalidPayload  string = "Invalid payload."
-	MsgUnauthenticated string = "Unauthenticated."
+	MsgInternalServer     string = "Internal server error."
+	MsgInvalidCredentials string = "Invalid credentials."
+	MsgInvalidPayload     string = "Invalid payload."
+	MsgUnauthenticated    string = "Unauthenticated."
 )
 
 // internal error logs
