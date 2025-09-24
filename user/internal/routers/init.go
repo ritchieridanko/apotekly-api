@@ -9,7 +9,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
-func Initialize(uh handlers.UserHandler) *gin.Engine {
+func Initialize(uh handlers.UserHandler, ah handlers.AddressHandler) *gin.Engine {
 	router := gin.New()
 
 	router.Use(otelgin.Middleware("app.user"))
@@ -27,6 +27,9 @@ func Initialize(uh handlers.UserHandler) *gin.Engine {
 
 	user := userRouters(uh)
 	user(api.Group("/users"))
+
+	address := addressRouters(ah)
+	address(api.Group("/addresses"))
 
 	return router
 }

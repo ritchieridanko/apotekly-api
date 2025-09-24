@@ -72,3 +72,21 @@ func Authenticate() gin.HandlerFunc {
 		ctx.Next()
 	}
 }
+
+func RequireVerified() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		ctxWithTracer, span := otel.Tracer(authErrorTracer).Start(ctx.Request.Context(), "RequireVerified")
+		defer span.End()
+
+		value := ctxWithTracer.Value(constants.CtxKeyIsVerified)
+		isVerified, ok := value.(bool)
+		if !ok || !isVerified {
+			err := ce.NewError(span, ce.CodeAuthNotVerified, "Please verify your email first!", errors.New("account not verified"))
+			ctx.Error(err)
+			ctx.Abort()
+			return
+		}
+
+		ctx.Next()
+	}
+}

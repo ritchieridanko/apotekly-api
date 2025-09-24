@@ -14,10 +14,16 @@ const (
 	nameMinLength int = 3
 	nameMaxLength int = 50
 	bioMaxLength  int = 100
+
+	receiverMinLength int = 2
+	receiverMaxLength int = 20
+	labelMinLength    int = 2
+	labelMaxLength    int = 20
+	notesMaxLength    int = 50
 )
 
 var (
-	phoneRegex = regexp.MustCompile(`^\d{9,15}$`)
+	phoneRegex = regexp.MustCompile(`^(?:62|0)8\d{7,11}$`)
 
 	acceptableFileTypes []string = []string{"image/png", "image/jpeg"}
 )
@@ -76,4 +82,20 @@ func ValidateImageFile(imageBuf []byte) (err error) {
 	}
 
 	return nil
+}
+
+func ValidateNewAddress(request dto.ReqNewAddress) (errString string) {
+	if len(strings.TrimSpace(request.Receiver)) < receiverMinLength || len(request.Receiver) > receiverMaxLength {
+		return fmt.Sprintf("Receiver name must be between %d and %d characters.", receiverMinLength, receiverMaxLength)
+	}
+	if !phoneRegex.MatchString(request.Phone) {
+		return "Phone is invalid."
+	}
+	if len(strings.TrimSpace(request.Label)) < labelMinLength || len(request.Label) > labelMaxLength {
+		return fmt.Sprintf("Label must be between %d and %d characters.", labelMinLength, labelMaxLength)
+	}
+	if request.Notes != nil && len(*request.Notes) > notesMaxLength {
+		return fmt.Sprintf("Notes must not exceed %d characters.", notesMaxLength)
+	}
+	return ""
 }

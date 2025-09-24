@@ -11,8 +11,10 @@ type internalErrorCode string
 
 // internal error codes (for logs/debugging)
 const (
+	CodeAddressNotFound      internalErrorCode = "ADDRESS_NOT_FOUND_ERROR"
 	CodeAuthAudienceNotFound internalErrorCode = "AUTH_AUDIENCE_NOT_FOUND_ERROR"
 	CodeAuthNotFound         internalErrorCode = "AUTH_NOT_FOUND_ERROR"
+	CodeAuthNotVerified      internalErrorCode = "AUTH_NOT_VERIFIED_ERROR"
 	CodeAuthTokenExpired     internalErrorCode = "AUTH_TOKEN_EXPIRED_ERROR"
 	CodeAuthTokenMalformed   internalErrorCode = "AUTH_TOKEN_MALFORMED_ERROR"
 	CodeAuthTokenParsing     internalErrorCode = "AUTH_TOKEN_PARSING_ERROR"

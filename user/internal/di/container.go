@@ -19,10 +19,13 @@ func SetupDependencies(dbInstance *sql.DB, cloudInstance *cloudinary.Cloudinary)
 	storage := storage.NewService(cloudInstance)
 
 	ur := repos.NewUserRepo(database)
+	ar := repos.NewAddressRepo(database)
 
 	uu := usecases.NewUserUsecase(ur, txManager, storage)
+	au := usecases.NewAddressUsecase(ar, txManager)
 
 	uh := handlers.NewUserHandler(uu)
+	ah := handlers.NewAddressHandler(au)
 
-	return routers.Initialize(uh)
+	return routers.Initialize(uh, ah)
 }

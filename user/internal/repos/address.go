@@ -1,0 +1,112 @@
+package repos
+
+import (
+	"context"
+	"errors"
+
+	"github.com/ritchieridanko/apotekly-api/user/internal/ce"
+	"github.com/ritchieridanko/apotekly-api/user/internal/entities"
+	"github.com/ritchieridanko/apotekly-api/user/internal/services/db"
+	"go.opentelemetry.io/otel"
+)
+
+const addressErrorTracer string = "repo.address"
+
+type AddressRepo interface {
+	Create(ctx context.Context, authID int64, data *entities.NewAddress) (address *entities.Address, err error)
+	HasPrimaryAddress(ctx context.Context, authID int64) (exists bool, err error)
+	UnsetPrimaryAddress(ctx context.Context, authID int64) (err error)
+}
+
+type addressRepo struct {
+	database db.DBService
+}
+
+func NewAddressRepo(database db.DBService) AddressRepo {
+	return &addressRepo{database}
+}
+
+func (r *addressRepo) Create(ctx context.Context, authID int64, data *entities.NewAddress) (*entities.Address, error) {
+	ctx, span := otel.Tracer(addressErrorTracer).Start(ctx, "Create")
+	defer span.End()
+
+	query := `
+		INSERT INTO
+			addresses (
+				auth_id, receiver, phone, label, notes, is_primary, country,
+				admin_level_1, admin_level_2, admin_level_3, admin_level_4,
+				street, postal_code, latitude, longitude, location
+			)
+		VALUES (
+			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
+			$13, $14, $15, ST_SetSRID(ST_MakePoint($15, $14), 4326)
+		)
+		RETURNING
+			id, receiver, phone, label, notes, is_primary, country,
+			admin_level_1, admin_level_2, admin_level_3, admin_level_4,
+			street, postal_code, latitude, longitude
+	`
+
+	row := r.database.QueryRow(
+		ctx, query, authID,
+		data.Receiver, data.Phone, data.Label, data.Notes, data.IsPrimary, data.Country,
+		data.AdminLevel1, data.AdminLevel2, data.AdminLevel3, data.AdminLevel4,
+		data.Street, data.PostalCode, data.Latitude, data.Longitude,
+	)
+
+	var address entities.Address
+	err := row.Scan(
+		&address.ID, &address.Receiver, &address.Phone, &address.Label, &address.Notes,
+		&address.IsPrimary, &address.Country, &address.AdminLevel1, &address.AdminLevel2,
+		&address.AdminLevel3, &address.AdminLevel4, &address.Street, &address.PostalCode,
+		&address.Latitude, &address.Longitude,
+	)
+	if err != nil {
+		return nil, ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
+	}
+
+	return &address, nil
+}
+
+func (r *addressRepo) HasPrimaryAddress(ctx context.Context, authID int64) (bool, error) {
+	ctx, span := otel.Tracer(addressErrorTracer).Start(ctx, "HasPrimaryAddress")
+	defer span.End()
+
+	query := `
+		SELECT 1
+		FROM addresses
+		WHERE auth_id = $1 AND is_primary = TRUE
+	`
+	if r.database.IsWithinTx(ctx) {
+		query += " FOR UPDATE"
+	}
+
+	row := r.database.QueryRow(ctx, query, authID)
+
+	var exists int
+	if err := row.Scan(&exists); err != nil {
+		if errors.Is(err, ce.ErrDBQueryNoRows) {
+			return false, nil
+		}
+		return false, ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
+	}
+
+	return true, nil
+}
+
+func (r *addressRepo) UnsetPrimaryAddress(ctx context.Context, authID int64) error {
+	ctx, span := otel.Tracer(addressErrorTracer).Start(ctx, "UnsetPrimaryAddress")
+	defer span.End()
+
+	query := `
+		UPDATE addresses
+		SET is_primary = FALSE, updated_at = NOW()
+		WHERE auth_id = $1 AND is_primary = TRUE
+	`
+
+	if err := r.database.Execute(ctx, query, authID); err != nil {
+		return ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
+	}
+
+	return nil
+}
