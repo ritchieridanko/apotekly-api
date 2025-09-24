@@ -8,6 +8,8 @@ import (
 
 func addressRouters(h handlers.AddressHandler) func(*gin.RouterGroup) {
 	return func(rg *gin.RouterGroup) {
+		rg.GET("", middlewares.Authenticate(), h.GetAllAddresses)
+
 		rg.POST("", middlewares.Authenticate(), middlewares.RequireVerified(), h.NewAddress)
 	}
 }

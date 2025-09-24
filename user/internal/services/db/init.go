@@ -10,6 +10,7 @@ import (
 type DBService interface {
 	Execute(ctx context.Context, query string, args ...any) (err error)
 	QueryRow(ctx context.Context, query string, args ...any) (row *sql.Row)
+	QueryAll(ctx context.Context, query string, args ...any) (rows *sql.Rows, err error)
 
 	IsWithinTx(ctx context.Context) (isWithin bool)
 }
@@ -43,6 +44,11 @@ func (dbs *dbService) Execute(ctx context.Context, query string, args ...any) er
 func (dbs *dbService) QueryRow(ctx context.Context, query string, args ...any) *sql.Row {
 	executor := getQueryExecutor(ctx, dbs.instance)
 	return executor.QueryRowContext(ctx, query, args...)
+}
+
+func (dbs *dbService) QueryAll(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	executor := getQueryExecutor(ctx, dbs.instance)
+	return executor.QueryContext(ctx, query, args...)
 }
 
 func (dbs *dbService) IsWithinTx(ctx context.Context) bool {

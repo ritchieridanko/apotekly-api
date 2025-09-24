@@ -18,6 +18,7 @@ const addressErrorTracer string = "handler.address"
 
 type AddressHandler interface {
 	NewAddress(ctx *gin.Context)
+	GetAllAddresses(ctx *gin.Context)
 }
 
 type addressHandler struct {
@@ -53,20 +54,20 @@ func (h *addressHandler) NewAddress(ctx *gin.Context) {
 	}
 
 	if payload.AdminLevel1 != nil {
-		normalized := strings.ToLower(strings.TrimSpace(*payload.AdminLevel1))
-		payload.AdminLevel1 = &normalized
+		value := strings.ToLower(strings.TrimSpace(*payload.AdminLevel1))
+		payload.AdminLevel1 = &value
 	}
 	if payload.AdminLevel2 != nil {
-		normalized := strings.ToLower(strings.TrimSpace(*payload.AdminLevel2))
-		payload.AdminLevel2 = &normalized
+		value := strings.ToLower(strings.TrimSpace(*payload.AdminLevel2))
+		payload.AdminLevel2 = &value
 	}
 	if payload.AdminLevel3 != nil {
-		normalized := strings.ToLower(strings.TrimSpace(*payload.AdminLevel3))
-		payload.AdminLevel3 = &normalized
+		value := strings.ToLower(strings.TrimSpace(*payload.AdminLevel3))
+		payload.AdminLevel3 = &value
 	}
 	if payload.AdminLevel4 != nil {
-		normalized := strings.ToLower(strings.TrimSpace(*payload.AdminLevel4))
-		payload.AdminLevel4 = &normalized
+		value := strings.ToLower(strings.TrimSpace(*payload.AdminLevel4))
+		payload.AdminLevel4 = &value
 	}
 
 	data := entities.NewAddress{
@@ -93,20 +94,20 @@ func (h *addressHandler) NewAddress(ctx *gin.Context) {
 	}
 
 	if address.AdminLevel1 != nil {
-		normalized := utils.ToTitlecase(*address.AdminLevel1)
-		address.AdminLevel1 = &normalized
+		value := utils.ToTitlecase(*address.AdminLevel1)
+		address.AdminLevel1 = &value
 	}
 	if address.AdminLevel2 != nil {
-		normalized := utils.ToTitlecase(*address.AdminLevel2)
-		address.AdminLevel2 = &normalized
+		value := utils.ToTitlecase(*address.AdminLevel2)
+		address.AdminLevel2 = &value
 	}
 	if address.AdminLevel3 != nil {
-		normalized := utils.ToTitlecase(*address.AdminLevel3)
-		address.AdminLevel3 = &normalized
+		value := utils.ToTitlecase(*address.AdminLevel3)
+		address.AdminLevel3 = &value
 	}
 	if address.AdminLevel4 != nil {
-		normalized := utils.ToTitlecase(*address.AdminLevel4)
-		address.AdminLevel4 = &normalized
+		value := utils.ToTitlecase(*address.AdminLevel4)
+		address.AdminLevel4 = &value
 	}
 
 	response := dto.RespNewAddress{
@@ -128,4 +129,64 @@ func (h *addressHandler) NewAddress(ctx *gin.Context) {
 	}
 
 	utils.SetResponse(ctx, "Address added successfully.", response, http.StatusCreated)
+}
+
+func (h *addressHandler) GetAllAddresses(ctx *gin.Context) {
+	ctxWithTracer, span := otel.Tracer(addressErrorTracer).Start(ctx.Request.Context(), "GetAllAddresses")
+	defer span.End()
+
+	authID, err := utils.ContextGetAuthID(ctxWithTracer)
+	if err != nil {
+		err := ce.NewError(span, ce.CodeContextValueNotFound, ce.MsgInternalServer, err)
+		ctx.Error(err)
+		return
+	}
+
+	addresses, err := h.au.GetAllAddresses(ctxWithTracer, authID)
+	if err != nil {
+		ctx.Error(err)
+		return
+	}
+
+	response := make([]dto.RespNewAddress, 0, len(addresses))
+	for _, address := range addresses {
+		if address.AdminLevel1 != nil {
+			value := utils.ToTitlecase(*address.AdminLevel1)
+			address.AdminLevel1 = &value
+		}
+		if address.AdminLevel2 != nil {
+			value := utils.ToTitlecase(*address.AdminLevel2)
+			address.AdminLevel2 = &value
+		}
+		if address.AdminLevel3 != nil {
+			value := utils.ToTitlecase(*address.AdminLevel3)
+			address.AdminLevel3 = &value
+		}
+		if address.AdminLevel4 != nil {
+			value := utils.ToTitlecase(*address.AdminLevel4)
+			address.AdminLevel4 = &value
+		}
+
+		addr := dto.RespNewAddress{
+			ID:          address.ID,
+			Receiver:    address.Receiver,
+			Phone:       address.Phone,
+			Label:       address.Label,
+			Notes:       address.Notes,
+			IsPrimary:   address.IsPrimary,
+			Country:     utils.ToTitlecase(address.Country),
+			AdminLevel1: address.AdminLevel1,
+			AdminLevel2: address.AdminLevel2,
+			AdminLevel3: address.AdminLevel3,
+			AdminLevel4: address.AdminLevel4,
+			Street:      address.Street,
+			PostalCode:  address.PostalCode,
+			Latitude:    address.Latitude,
+			Longitude:   address.Longitude,
+		}
+
+		response = append(response, addr)
+	}
+
+	utils.SetResponse(ctx, "ok", response, http.StatusOK)
 }

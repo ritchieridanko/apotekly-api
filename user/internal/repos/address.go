@@ -14,6 +14,7 @@ const addressErrorTracer string = "repo.address"
 
 type AddressRepo interface {
 	Create(ctx context.Context, authID int64, data *entities.NewAddress) (address *entities.Address, err error)
+	GetAll(ctx context.Context, authID int64) (addresses []entities.Address, err error)
 	HasPrimaryAddress(ctx context.Context, authID int64) (exists bool, err error)
 	UnsetPrimaryAddress(ctx context.Context, authID int64) (err error)
 }
@@ -66,6 +67,55 @@ func (r *addressRepo) Create(ctx context.Context, authID int64, data *entities.N
 	}
 
 	return &address, nil
+}
+
+func (r *addressRepo) GetAll(ctx context.Context, authID int64) ([]entities.Address, error) {
+	ctx, span := otel.Tracer(addressErrorTracer).Start(ctx, "GetAll")
+	defer span.End()
+
+	query := `
+		SELECT
+			id, receiver, phone, label, notes, is_primary, country,
+			admin_level_1, admin_level_2, admin_level_3, admin_level_4,
+			street, postal_code, latitude, longitude
+		FROM
+			addresses
+		WHERE
+			auth_id = $1
+	`
+
+	rows, err := r.database.QueryAll(ctx, query, authID)
+	if err != nil {
+		return nil, ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
+	}
+	defer rows.Close()
+
+	addresses := make([]entities.Address, 0)
+	for rows.Next() {
+		var address entities.Address
+
+		err := rows.Scan(
+			&address.ID, &address.Receiver, &address.Phone, &address.Label, &address.Notes,
+			&address.IsPrimary, &address.Country, &address.AdminLevel1, &address.AdminLevel2,
+			&address.AdminLevel3, &address.AdminLevel4, &address.Street, &address.PostalCode,
+			&address.Latitude, &address.Longitude,
+		)
+		if err != nil {
+			return nil, ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
+		}
+
+		addresses = append(addresses, address)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
+	}
+
+	if len(addresses) == 0 {
+		return []entities.Address{}, nil
+	}
+
+	return addresses, nil
 }
 
 func (r *addressRepo) HasPrimaryAddress(ctx context.Context, authID int64) (bool, error) {
