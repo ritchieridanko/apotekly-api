@@ -20,6 +20,7 @@ type AddressHandler interface {
 	NewAddress(ctx *gin.Context)
 	GetAllAddresses(ctx *gin.Context)
 	UpdateAddress(ctx *gin.Context)
+	ChangePrimaryAddress(ctx *gin.Context)
 	DeleteAddress(ctx *gin.Context)
 }
 
@@ -182,6 +183,38 @@ func (h *addressHandler) UpdateAddress(ctx *gin.Context) {
 	}
 
 	utils.SetResponse(ctx, "Address updated successfully.", response, http.StatusOK)
+}
+
+func (h *addressHandler) ChangePrimaryAddress(ctx *gin.Context) {
+	ctxWithTracer, span := otel.Tracer(addressErrorTracer).Start(ctx.Request.Context(), "ChangePrimaryAddress")
+	defer span.End()
+
+	authID, err := utils.ContextGetAuthID(ctxWithTracer)
+	if err != nil {
+		err := ce.NewError(span, ce.CodeContextValueNotFound, ce.MsgInternalServer, err)
+		ctx.Error(err)
+		return
+	}
+
+	addressID, err := utils.ToInt64(ctx.Param("id"))
+	if err != nil {
+		err := ce.NewError(span, ce.CodeInvalidParams, ce.MsgInvalidParams, err)
+		ctx.Error(err)
+		return
+	}
+
+	newPrimaryID, unsetPrimaryID, err := h.au.ChangePrimaryAddress(ctxWithTracer, authID, addressID)
+	if err != nil {
+		ctx.Error(err)
+		return
+	}
+
+	response := dto.RespChangePrimaryAddress{
+		NewPrimaryID:   newPrimaryID,
+		UnsetPrimaryID: unsetPrimaryID,
+	}
+
+	utils.SetResponse(ctx, "ok", response, http.StatusOK)
 }
 
 func (h *addressHandler) DeleteAddress(ctx *gin.Context) {

@@ -20,6 +20,7 @@ type AddressRepo interface {
 	Update(ctx context.Context, authID, addressID int64, data *entities.AddressChange) (address *entities.Address, err error)
 	Delete(ctx context.Context, authID, addressID int64) (deletedID int64, err error)
 	HasPrimary(ctx context.Context, authID int64) (exists bool, err error)
+	SetAsPrimary(ctx context.Context, authID, addressID int64) (newPrimaryID int64, err error)
 	SetLastAsPrimary(ctx context.Context, authID int64) (newPrimaryID int64, err error)
 	UnsetPrimary(ctx context.Context, authID int64) (unsetPrimaryID int64, err error)
 }
@@ -282,6 +283,30 @@ func (r *addressRepo) HasPrimary(ctx context.Context, authID int64) (bool, error
 	}
 
 	return true, nil
+}
+
+func (r *addressRepo) SetAsPrimary(ctx context.Context, authID, addressID int64) (int64, error) {
+	ctx, span := otel.Tracer(addressErrorTracer).Start(ctx, "SetAsPrimary")
+	defer span.End()
+
+	query := `
+		UPDATE addresses
+		SET is_primary = TRUE, updated_at = NOW()
+		WHERE id = $1 AND auth_id = $2
+		RETURNING id
+	`
+
+	row := r.database.QueryRow(ctx, query, addressID, authID)
+
+	var newPrimaryID int64
+	if err := row.Scan(&newPrimaryID); err != nil {
+		if errors.Is(err, ce.ErrDBQueryNoRows) {
+			return 0, ce.NewError(span, ce.CodeAddressNotFound, ce.MsgAddressNotFound, err)
+		}
+		return 0, ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
+	}
+
+	return newPrimaryID, nil
 }
 
 func (r *addressRepo) SetLastAsPrimary(ctx context.Context, authID int64) (int64, error) {

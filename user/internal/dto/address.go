@@ -62,6 +62,11 @@ type RespUpdateAddress struct {
 	UnsetPrimaryID *int64      `json:"unset_primary_id,omitempty"`
 }
 
+type RespChangePrimaryAddress struct {
+	NewPrimaryID   int64 `json:"new_primary_id"`
+	UnsetPrimaryID int64 `json:"unset_primary_id"`
+}
+
 type RespDeleteAddress struct {
 	DeletedID    int64  `json:"deleted_id"`
 	NewPrimaryID *int64 `json:"new_primary_id,omitempty"`
