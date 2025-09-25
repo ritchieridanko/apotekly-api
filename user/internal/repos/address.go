@@ -18,7 +18,7 @@ type AddressRepo interface {
 	Delete(ctx context.Context, authID, addressID int64) (deletedID int64, err error)
 	HasPrimary(ctx context.Context, authID int64) (exists bool, err error)
 	SetLastAsPrimary(ctx context.Context, authID int64) (newPrimaryID int64, err error)
-	UnsetPrimary(ctx context.Context, authID int64) (err error)
+	UnsetPrimary(ctx context.Context, authID int64) (unsetPrimaryID int64, err error)
 }
 
 type addressRepo struct {
@@ -84,6 +84,9 @@ func (r *addressRepo) GetAll(ctx context.Context, authID int64) ([]entities.Addr
 			addresses
 		WHERE
 			auth_id = $1
+		ORDER BY
+			is_primary DESC,
+			created_at DESC
 	`
 
 	rows, err := r.database.QueryAll(ctx, query, authID)
@@ -131,7 +134,7 @@ func (r *addressRepo) Delete(ctx context.Context, authID, addressID int64) (int6
 	var deletedID int64
 	if err := row.Scan(&deletedID); err != nil {
 		if errors.Is(err, ce.ErrDBQueryNoRows) {
-			return 0, ce.NewError(span, ce.CodeAddressNotFound, "Address does not exist.", err)
+			return 0, ce.NewError(span, ce.CodeAddressNotFound, ce.MsgAddressNotFound, err)
 		}
 		return 0, ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
 	}
@@ -184,18 +187,18 @@ func (r *addressRepo) SetLastAsPrimary(ctx context.Context, authID int64) (int64
 
 	row := r.database.QueryRow(ctx, query, authID)
 
-	var newPrimaryID int64
-	if err := row.Scan(&newPrimaryID); err != nil {
+	var addressID int64
+	if err := row.Scan(&addressID); err != nil {
 		if errors.Is(err, ce.ErrDBQueryNoRows) {
 			return 0, nil
 		}
 		return 0, ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
 	}
 
-	return newPrimaryID, nil
+	return addressID, nil
 }
 
-func (r *addressRepo) UnsetPrimary(ctx context.Context, authID int64) error {
+func (r *addressRepo) UnsetPrimary(ctx context.Context, authID int64) (int64, error) {
 	ctx, span := otel.Tracer(addressErrorTracer).Start(ctx, "UnsetPrimary")
 	defer span.End()
 
@@ -203,11 +206,15 @@ func (r *addressRepo) UnsetPrimary(ctx context.Context, authID int64) error {
 		UPDATE addresses
 		SET is_primary = FALSE, updated_at = NOW()
 		WHERE auth_id = $1 AND is_primary = TRUE
+		RETURNING id
 	`
 
-	if err := r.database.Execute(ctx, query, authID); err != nil {
-		return ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
+	row := r.database.QueryRow(ctx, query, authID)
+
+	var addressID int64
+	if err := row.Scan(&addressID); err != nil {
+		return 0, ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
 	}
 
-	return nil
+	return addressID, nil
 }

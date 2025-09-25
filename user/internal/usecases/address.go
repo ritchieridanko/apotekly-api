@@ -15,7 +15,7 @@ import (
 const addressErrorTracer string = "usecase.address"
 
 type AddressUsecase interface {
-	NewAddress(ctx context.Context, authID int64, data *entities.NewAddress) (address *entities.Address, err error)
+	NewAddress(ctx context.Context, authID int64, data *entities.NewAddress) (address *entities.Address, unsetPrimaryID int64, err error)
 	GetAllAddresses(ctx context.Context, authID int64) (addresses []entities.Address, err error)
 	DeleteAddress(ctx context.Context, authID, addressID int64) (deletedID int64, newPrimaryID int64, err error)
 }
@@ -29,10 +29,11 @@ func NewAddressUsecase(ar repos.AddressRepo, tx db.TxManager) AddressUsecase {
 	return &addressUsecase{ar, tx}
 }
 
-func (u *addressUsecase) NewAddress(ctx context.Context, authID int64, data *entities.NewAddress) (*entities.Address, error) {
+func (u *addressUsecase) NewAddress(ctx context.Context, authID int64, data *entities.NewAddress) (*entities.Address, int64, error) {
 	ctx, span := otel.Tracer(addressErrorTracer).Start(ctx, "NewAddress")
 	defer span.End()
 
+	var unsetPrimaryID int64
 	var address *entities.Address
 	err := u.tx.WithTx(ctx, func(ctx context.Context) (err error) {
 		hasPrimaryAddress, err := u.ar.HasPrimary(ctx, authID)
@@ -40,7 +41,8 @@ func (u *addressUsecase) NewAddress(ctx context.Context, authID int64, data *ent
 			return err
 		}
 		if hasPrimaryAddress && data.IsPrimary {
-			if err := u.ar.UnsetPrimary(ctx, authID); err != nil {
+			unsetPrimaryID, err = u.ar.UnsetPrimary(ctx, authID)
+			if err != nil {
 				return err
 			}
 		}
@@ -58,10 +60,10 @@ func (u *addressUsecase) NewAddress(ctx context.Context, authID int64, data *ent
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	return address, nil
+	return address, unsetPrimaryID, nil
 }
 
 func (u *addressUsecase) GetAllAddresses(ctx context.Context, authID int64) ([]entities.Address, error) {

@@ -26,6 +26,14 @@ func ToTitlecase(name string) string {
 	}
 }
 
+func ToTitlecasePtr(name *string) *string {
+	if name == nil {
+		return nil
+	}
+	value := ToTitlecase(*name)
+	return &value
+}
+
 func ToInt64(value string) (number int64, err error) {
 	return strconv.ParseInt(value, 10, 64)
 }

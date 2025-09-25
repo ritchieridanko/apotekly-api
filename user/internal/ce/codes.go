@@ -33,6 +33,7 @@ const (
 
 // external error messages (for end-users)
 const (
+	MsgAddressNotFound    string = "Address not found."
 	MsgInternalServer     string = "Internal server error."
 	MsgInvalidCredentials string = "Invalid credentials."
 	MsgInvalidParams      string = "Invalid params."

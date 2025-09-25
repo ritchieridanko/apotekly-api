@@ -1,5 +1,23 @@
 package dto
 
+type RespAddress struct {
+	ID          int64   `json:"id"`
+	Receiver    string  `json:"receiver"`
+	Phone       string  `json:"phone"`
+	Label       string  `json:"label"`
+	Notes       *string `json:"notes"`
+	IsPrimary   bool    `json:"is_primary"`
+	Country     string  `json:"country"`
+	AdminLevel1 *string `json:"admin_level_1"`
+	AdminLevel2 *string `json:"admin_level_2"`
+	AdminLevel3 *string `json:"admin_level_3"`
+	AdminLevel4 *string `json:"admin_level_4"`
+	Street      string  `json:"street"`
+	PostalCode  string  `json:"postal_code"`
+	Latitude    float64 `json:"latitude"`
+	Longitude   float64 `json:"longitude"`
+}
+
 type ReqNewAddress struct {
 	Receiver    string  `json:"receiver" binding:"required"`
 	Phone       string  `json:"phone" binding:"required"`
@@ -18,21 +36,8 @@ type ReqNewAddress struct {
 }
 
 type RespNewAddress struct {
-	ID          int64   `json:"id"`
-	Receiver    string  `json:"receiver"`
-	Phone       string  `json:"phone"`
-	Label       string  `json:"label"`
-	Notes       *string `json:"notes"`
-	IsPrimary   bool    `json:"is_primary"`
-	Country     string  `json:"country"`
-	AdminLevel1 *string `json:"admin_level_1"`
-	AdminLevel2 *string `json:"admin_level_2"`
-	AdminLevel3 *string `json:"admin_level_3"`
-	AdminLevel4 *string `json:"admin_level_4"`
-	Street      string  `json:"street"`
-	PostalCode  string  `json:"postal_code"`
-	Latitude    float64 `json:"latitude"`
-	Longitude   float64 `json:"longitude"`
+	Created   RespAddress `json:"created"`
+	UpdatedID *int64      `json:"updated_id,omitempty"`
 }
 
 type RespDeleteAddress struct {

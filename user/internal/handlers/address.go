@@ -88,45 +88,20 @@ func (h *addressHandler) NewAddress(ctx *gin.Context) {
 		Longitude:   payload.Longitude,
 	}
 
-	address, err := h.au.NewAddress(ctxWithTracer, authID, &data)
+	address, unsetPrimaryID, err := h.au.NewAddress(ctxWithTracer, authID, &data)
 	if err != nil {
 		ctx.Error(err)
 		return
 	}
 
-	if address.AdminLevel1 != nil {
-		value := utils.ToTitlecase(*address.AdminLevel1)
-		address.AdminLevel1 = &value
-	}
-	if address.AdminLevel2 != nil {
-		value := utils.ToTitlecase(*address.AdminLevel2)
-		address.AdminLevel2 = &value
-	}
-	if address.AdminLevel3 != nil {
-		value := utils.ToTitlecase(*address.AdminLevel3)
-		address.AdminLevel3 = &value
-	}
-	if address.AdminLevel4 != nil {
-		value := utils.ToTitlecase(*address.AdminLevel4)
-		address.AdminLevel4 = &value
+	var updatedID *int64
+	if unsetPrimaryID != 0 {
+		updatedID = &unsetPrimaryID
 	}
 
 	response := dto.RespNewAddress{
-		ID:          address.ID,
-		Receiver:    address.Receiver,
-		Phone:       address.Phone,
-		Label:       address.Label,
-		Notes:       address.Notes,
-		IsPrimary:   address.IsPrimary,
-		Country:     utils.ToTitlecase(address.Country),
-		AdminLevel1: address.AdminLevel1,
-		AdminLevel2: address.AdminLevel2,
-		AdminLevel3: address.AdminLevel3,
-		AdminLevel4: address.AdminLevel4,
-		Street:      address.Street,
-		PostalCode:  address.PostalCode,
-		Latitude:    address.Latitude,
-		Longitude:   address.Longitude,
+		Created:   h.setAddressAsResponse(*address),
+		UpdatedID: updatedID,
 	}
 
 	utils.SetResponse(ctx, "Address added successfully.", response, http.StatusCreated)
@@ -149,7 +124,11 @@ func (h *addressHandler) GetAllAddresses(ctx *gin.Context) {
 		return
 	}
 
-	response := h.setAddressesAsResponse(addresses)
+	response := make([]dto.RespAddress, 0, len(addresses))
+	for _, address := range addresses {
+		addr := h.setAddressAsResponse(address)
+		response = append(response, addr)
+	}
 
 	utils.SetResponse(ctx, "ok", response, http.StatusOK)
 }
@@ -191,46 +170,22 @@ func (h *addressHandler) DeleteAddress(ctx *gin.Context) {
 	utils.SetResponse(ctx, "Address deleted successfully.", response, http.StatusOK)
 }
 
-func (h *addressHandler) setAddressesAsResponse(addresses []entities.Address) []dto.RespNewAddress {
-	response := make([]dto.RespNewAddress, 0, len(addresses))
-	for _, address := range addresses {
-		if address.AdminLevel1 != nil {
-			value := utils.ToTitlecase(*address.AdminLevel1)
-			address.AdminLevel1 = &value
-		}
-		if address.AdminLevel2 != nil {
-			value := utils.ToTitlecase(*address.AdminLevel2)
-			address.AdminLevel2 = &value
-		}
-		if address.AdminLevel3 != nil {
-			value := utils.ToTitlecase(*address.AdminLevel3)
-			address.AdminLevel3 = &value
-		}
-		if address.AdminLevel4 != nil {
-			value := utils.ToTitlecase(*address.AdminLevel4)
-			address.AdminLevel4 = &value
-		}
-
-		addr := dto.RespNewAddress{
-			ID:          address.ID,
-			Receiver:    address.Receiver,
-			Phone:       address.Phone,
-			Label:       address.Label,
-			Notes:       address.Notes,
-			IsPrimary:   address.IsPrimary,
-			Country:     utils.ToTitlecase(address.Country),
-			AdminLevel1: address.AdminLevel1,
-			AdminLevel2: address.AdminLevel2,
-			AdminLevel3: address.AdminLevel3,
-			AdminLevel4: address.AdminLevel4,
-			Street:      address.Street,
-			PostalCode:  address.PostalCode,
-			Latitude:    address.Latitude,
-			Longitude:   address.Longitude,
-		}
-
-		response = append(response, addr)
+func (h *addressHandler) setAddressAsResponse(address entities.Address) dto.RespAddress {
+	return dto.RespAddress{
+		ID:          address.ID,
+		Receiver:    address.Receiver,
+		Phone:       address.Phone,
+		Label:       address.Label,
+		Notes:       address.Notes,
+		IsPrimary:   address.IsPrimary,
+		Country:     utils.ToTitlecase(address.Country),
+		AdminLevel1: utils.ToTitlecasePtr(address.AdminLevel1),
+		AdminLevel2: utils.ToTitlecasePtr(address.AdminLevel2),
+		AdminLevel3: utils.ToTitlecasePtr(address.AdminLevel3),
+		AdminLevel4: utils.ToTitlecasePtr(address.AdminLevel4),
+		Street:      address.Street,
+		PostalCode:  address.PostalCode,
+		Latitude:    address.Latitude,
+		Longitude:   address.Longitude,
 	}
-
-	return response
 }
