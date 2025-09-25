@@ -10,32 +10,52 @@ import (
 
 var titleCaser = cases.Title(language.English)
 
-func ToTitlecase(name string) string {
-	names := strings.Fields(name)
-	if len(names) == 0 {
-		return ""
-	}
-
-	switch strings.ToLower(names[0]) {
-	case "dki":
-		return "DKI " + titleCaser.String(strings.Join(names[1:], " "))
-	case "di":
-		return "DI " + titleCaser.String(strings.Join(names[1:], " "))
-	default:
-		return titleCaser.String(strings.Join(names, " "))
-	}
+func Normalize(value string) (result string) {
+	return strings.ToLower(strings.TrimSpace(value))
 }
 
-func ToTitlecasePtr(name *string) *string {
-	if name == nil {
+func NormalizePtr(value *string) (result *string) {
+	if value == nil {
 		return nil
 	}
-	value := ToTitlecase(*name)
-	return &value
+	normalizedValue := Normalize(*value)
+	return &normalizedValue
 }
 
 func ToInt64(value string) (number int64, err error) {
 	return strconv.ParseInt(value, 10, 64)
+}
+
+func ToTitlecase(value string) (result string) {
+	values := strings.Fields(value)
+	if len(values) == 0 {
+		return ""
+	}
+
+	switch strings.ToLower(values[0]) {
+	case "dki":
+		return "DKI " + titleCaser.String(strings.Join(values[1:], " "))
+	case "di":
+		return "DI " + titleCaser.String(strings.Join(values[1:], " "))
+	default:
+		return titleCaser.String(strings.Join(values, " "))
+	}
+}
+
+func ToTitlecasePtr(value *string) (result *string) {
+	if value == nil {
+		return nil
+	}
+	titlecasedValue := ToTitlecase(*value)
+	return &titlecasedValue
+}
+
+func TrimSpacePtr(value *string) (result *string) {
+	if value == nil {
+		return nil
+	}
+	trimmedValue := strings.TrimSpace(*value)
+	return &trimmedValue
 }
 
 func min(a, b int) int {

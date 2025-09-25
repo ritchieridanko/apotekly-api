@@ -20,6 +20,7 @@ const (
 	labelMinLength    int = 2
 	labelMaxLength    int = 20
 	notesMaxLength    int = 50
+	streetMaxLength   int = 100
 )
 
 var (
@@ -66,6 +67,52 @@ func ValidateUserUpdate(request dto.ReqUserUpdate) (errString string) {
 	return ""
 }
 
+func ValidateNewAddress(request dto.ReqNewAddress) (errString string) {
+	if len(strings.TrimSpace(request.Receiver)) < receiverMinLength || len(request.Receiver) > receiverMaxLength {
+		return fmt.Sprintf("Receiver name must be between %d and %d characters.", receiverMinLength, receiverMaxLength)
+	}
+	if !phoneRegex.MatchString(request.Phone) {
+		return "Phone is invalid."
+	}
+	if len(strings.TrimSpace(request.Label)) < labelMinLength || len(request.Label) > labelMaxLength {
+		return fmt.Sprintf("Label must be between %d and %d characters.", labelMinLength, labelMaxLength)
+	}
+	if request.Notes != nil && len(*request.Notes) > notesMaxLength {
+		return fmt.Sprintf("Notes must not exceed %d characters.", notesMaxLength)
+	}
+	if len(strings.TrimSpace(request.Street)) > streetMaxLength {
+		return fmt.Sprintf("Street must not exceed %d characters.", streetMaxLength)
+	}
+	return ""
+}
+
+func ValidateAddressChange(request dto.ReqUpdateAddress) (errString string) {
+	if request.Receiver != nil && (len(strings.TrimSpace(*request.Receiver)) < receiverMinLength ||
+		len(*request.Receiver) > receiverMaxLength) {
+		return fmt.Sprintf("Receiver name must be between %d and %d characters.", receiverMinLength, receiverMaxLength)
+	}
+	if request.Phone != nil && !phoneRegex.MatchString(*request.Phone) {
+		return "Phone is invalid."
+	}
+	if request.Label != nil && (len(strings.TrimSpace(*request.Label)) < labelMinLength ||
+		len(*request.Label) > labelMaxLength) {
+		return fmt.Sprintf("Label must be between %d and %d characters.", labelMinLength, labelMaxLength)
+	}
+	if request.Notes != nil && len(*request.Notes) > notesMaxLength {
+		return fmt.Sprintf("Notes must not exceed %d characters.", notesMaxLength)
+	}
+	if request.Street != nil && len(strings.TrimSpace(*request.Street)) > streetMaxLength {
+		return fmt.Sprintf("Street must not exceed %d characters.", streetMaxLength)
+	}
+	if request.Latitude != nil && request.Longitude == nil {
+		return "Longitude not provided."
+	}
+	if request.Longitude != nil && request.Latitude == nil {
+		return "Latitude not provided."
+	}
+	return ""
+}
+
 func ValidateImageFile(imageBuf []byte) (err error) {
 	// validate content type from first 512 bytes
 	fileType := http.DetectContentType(imageBuf[:min(len(imageBuf), 512)])
@@ -82,20 +129,4 @@ func ValidateImageFile(imageBuf []byte) (err error) {
 	}
 
 	return nil
-}
-
-func ValidateNewAddress(request dto.ReqNewAddress) (errString string) {
-	if len(strings.TrimSpace(request.Receiver)) < receiverMinLength || len(request.Receiver) > receiverMaxLength {
-		return fmt.Sprintf("Receiver name must be between %d and %d characters.", receiverMinLength, receiverMaxLength)
-	}
-	if !phoneRegex.MatchString(request.Phone) {
-		return "Phone is invalid."
-	}
-	if len(strings.TrimSpace(request.Label)) < labelMinLength || len(request.Label) > labelMaxLength {
-		return fmt.Sprintf("Label must be between %d and %d characters.", labelMinLength, labelMaxLength)
-	}
-	if request.Notes != nil && len(*request.Notes) > notesMaxLength {
-		return fmt.Sprintf("Notes must not exceed %d characters.", notesMaxLength)
-	}
-	return ""
 }

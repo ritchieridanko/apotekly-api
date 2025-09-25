@@ -17,6 +17,7 @@ const addressErrorTracer string = "usecase.address"
 type AddressUsecase interface {
 	NewAddress(ctx context.Context, authID int64, data *entities.NewAddress) (address *entities.Address, unsetPrimaryID int64, err error)
 	GetAllAddresses(ctx context.Context, authID int64) (addresses []entities.Address, err error)
+	UpdateAddress(ctx context.Context, authID, addressID int64, data *entities.AddressChange) (address *entities.Address, unsetPrimaryID int64, err error)
 	DeleteAddress(ctx context.Context, authID, addressID int64) (deletedID int64, newPrimaryID int64, err error)
 }
 
@@ -71,6 +72,42 @@ func (u *addressUsecase) GetAllAddresses(ctx context.Context, authID int64) ([]e
 	defer span.End()
 
 	return u.ar.GetAll(ctx, authID)
+}
+
+func (u *addressUsecase) UpdateAddress(ctx context.Context, authID, addressID int64, data *entities.AddressChange) (*entities.Address, int64, error) {
+	ctx, span := otel.Tracer(addressErrorTracer).Start(ctx, "UpdateAddress")
+	defer span.End()
+
+	var unsetPrimaryID int64
+	var address *entities.Address
+	err := u.tx.WithTx(ctx, func(ctx context.Context) (err error) {
+		if data.IsPrimary != nil && *data.IsPrimary {
+			hasPrimaryAddress, err := u.ar.HasPrimary(ctx, authID)
+			if err != nil {
+				return err
+			}
+			if hasPrimaryAddress {
+				unsetPrimaryID, err = u.ar.UnsetPrimary(ctx, authID)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		// TODO (1)
+
+		address, err = u.ar.Update(ctx, authID, addressID, data)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return address, unsetPrimaryID, nil
 }
 
 func (u *addressUsecase) DeleteAddress(ctx context.Context, authID, addressID int64) (int64, int64, error) {

@@ -36,11 +36,33 @@ type ReqNewAddress struct {
 }
 
 type RespNewAddress struct {
-	Created   RespAddress `json:"created"`
-	UpdatedID *int64      `json:"updated_id,omitempty"`
+	Created        RespAddress `json:"created"`
+	UnsetPrimaryID *int64      `json:"unset_primary_id,omitempty"`
+}
+
+type ReqUpdateAddress struct {
+	Receiver    *string  `json:"receiver"`
+	Phone       *string  `json:"phone"`
+	Label       *string  `json:"label"`
+	Notes       *string  `json:"notes"`
+	IsPrimary   *bool    `json:"is_primary"`
+	Country     *string  `json:"country"`
+	AdminLevel1 *string  `json:"admin_level_1"`
+	AdminLevel2 *string  `json:"admin_level_2"`
+	AdminLevel3 *string  `json:"admin_level_3"`
+	AdminLevel4 *string  `json:"admin_level_4"`
+	Street      *string  `json:"street"`
+	PostalCode  *string  `json:"postal_code"`
+	Latitude    *float64 `json:"latitude"`
+	Longitude   *float64 `json:"longitude"`
+}
+
+type RespUpdateAddress struct {
+	Updated        RespAddress `json:"updated"`
+	UnsetPrimaryID *int64      `json:"unset_primary_id,omitempty"`
 }
 
 type RespDeleteAddress struct {
-	DeletedID int64  `json:"deleted_id"`
-	UpdatedID *int64 `json:"updated_id,omitempty"`
+	DeletedID    int64  `json:"deleted_id"`
+	NewPrimaryID *int64 `json:"new_primary_id,omitempty"`
 }
