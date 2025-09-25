@@ -45,7 +45,6 @@ type ReqUpdateAddress struct {
 	Phone       *string  `json:"phone"`
 	Label       *string  `json:"label"`
 	Notes       *string  `json:"notes"`
-	IsPrimary   *bool    `json:"is_primary"`
 	Country     *string  `json:"country"`
 	AdminLevel1 *string  `json:"admin_level_1"`
 	AdminLevel2 *string  `json:"admin_level_2"`
@@ -58,8 +57,7 @@ type ReqUpdateAddress struct {
 }
 
 type RespUpdateAddress struct {
-	Updated        RespAddress `json:"updated"`
-	UnsetPrimaryID *int64      `json:"unset_primary_id,omitempty"`
+	Updated RespAddress `json:"updated"`
 }
 
 type RespChangePrimaryAddress struct {

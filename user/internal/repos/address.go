@@ -155,11 +155,6 @@ func (r *addressRepo) Update(ctx context.Context, authID, addressID int64, data 
 		args = append(args, *data.Notes)
 		argPos++
 	}
-	if data.IsPrimary != nil {
-		setClauses = append(setClauses, fmt.Sprintf("is_primary = $%d", argPos))
-		args = append(args, *data.IsPrimary)
-		argPos++
-	}
 	if data.Country != nil {
 		setClauses = append(setClauses, fmt.Sprintf("country = $%d", argPos))
 		args = append(args, *data.Country)

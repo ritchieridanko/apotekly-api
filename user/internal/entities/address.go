@@ -40,7 +40,6 @@ type AddressChange struct {
 	Phone       *string
 	Label       *string
 	Notes       *string
-	IsPrimary   *bool
 	Country     *string
 	AdminLevel1 *string
 	AdminLevel2 *string

@@ -154,7 +154,6 @@ func (h *addressHandler) UpdateAddress(ctx *gin.Context) {
 		Phone:       payload.Phone,
 		Label:       utils.TrimSpacePtr(payload.Label),
 		Notes:       payload.Notes,
-		IsPrimary:   payload.IsPrimary,
 		Country:     utils.NormalizePtr(payload.Country),
 		AdminLevel1: utils.NormalizePtr(payload.AdminLevel1),
 		AdminLevel2: utils.NormalizePtr(payload.AdminLevel2),
@@ -166,20 +165,14 @@ func (h *addressHandler) UpdateAddress(ctx *gin.Context) {
 		Longitude:   payload.Longitude,
 	}
 
-	address, unsetPrimaryID, err := h.au.UpdateAddress(ctxWithTracer, authID, addressID, &data)
+	address, err := h.au.UpdateAddress(ctxWithTracer, authID, addressID, &data)
 	if err != nil {
 		ctx.Error(err)
 		return
 	}
 
-	var unsetID *int64
-	if unsetPrimaryID != 0 {
-		unsetID = &unsetPrimaryID
-	}
-
 	response := dto.RespUpdateAddress{
-		Updated:        h.setAddressAsResponse(*address),
-		UnsetPrimaryID: unsetID,
+		Updated: h.setAddressAsResponse(*address),
 	}
 
 	utils.SetResponse(ctx, "Address updated successfully.", response, http.StatusOK)
