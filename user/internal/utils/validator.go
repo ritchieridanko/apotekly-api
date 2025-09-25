@@ -48,7 +48,7 @@ func ValidateNewUser(request dto.ReqNewUser) (errString string) {
 	return ""
 }
 
-func ValidateUserUpdate(request dto.ReqUserUpdate) (errString string) {
+func ValidateUserChange(request dto.ReqUpdateUser) (errString string) {
 	if request.Name != nil && (len(strings.TrimSpace(*request.Name)) < nameMinLength || len(*request.Name) > nameMaxLength) {
 		return fmt.Sprintf("Name must be between %d and %d characters.", nameMinLength, nameMaxLength)
 	}

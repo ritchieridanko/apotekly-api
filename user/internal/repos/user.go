@@ -3,6 +3,8 @@ package repos
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/ritchieridanko/apotekly-api/user/internal/ce"
@@ -17,7 +19,7 @@ type UserRepo interface {
 	Create(ctx context.Context, authID int64, data *entities.NewUser) (user *entities.User, err error)
 	GetByAuthID(ctx context.Context, authID int64) (user *entities.User, err error)
 	GetUserID(ctx context.Context, authID int64) (userID uuid.UUID, err error)
-	UpdateUser(ctx context.Context, authID int64, data *entities.UserUpdate) (err error)
+	UpdateUser(ctx context.Context, authID int64, data *entities.UserChange) (user *entities.User, err error)
 	UpdateProfilePicture(ctx context.Context, authID int64, profilePicture string) (err error)
 	HasUser(ctx context.Context, authID int64) (exists bool, err error)
 }
@@ -41,28 +43,12 @@ func (r *userRepo) Create(ctx context.Context, authID int64, data *entities.NewU
 	`
 
 	row := r.database.QueryRow(
-		ctx,
-		query,
-		authID,
-		data.UserID,
-		data.Name,
-		data.Bio,
-		data.Sex,
-		data.Birthdate,
-		data.Phone,
-		data.ProfilePicture,
+		ctx, query,
+		authID, data.UserID, data.Name, data.Bio, data.Sex, data.Birthdate, data.Phone, data.ProfilePicture,
 	)
 
 	var user entities.User
-	err := row.Scan(
-		&user.UserID,
-		&user.Name,
-		&user.Bio,
-		&user.Sex,
-		&user.Birthdate,
-		&user.Phone,
-		&user.ProfilePicture,
-	)
+	err := row.Scan(&user.UserID, &user.Name, &user.Bio, &user.Sex, &user.Birthdate, &user.Phone, &user.ProfilePicture)
 	if err != nil {
 		return nil, ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
 	}
@@ -86,18 +72,10 @@ func (r *userRepo) GetByAuthID(ctx context.Context, authID int64) (*entities.Use
 	row := r.database.QueryRow(ctx, query, authID)
 
 	var user entities.User
-	err := row.Scan(
-		&user.UserID,
-		&user.Name,
-		&user.Bio,
-		&user.Sex,
-		&user.Birthdate,
-		&user.Phone,
-		&user.ProfilePicture,
-	)
+	err := row.Scan(&user.UserID, &user.Name, &user.Bio, &user.Sex, &user.Birthdate, &user.Phone, &user.ProfilePicture)
 	if err != nil {
 		if errors.Is(err, ce.ErrDBQueryNoRows) {
-			return nil, ce.NewError(span, ce.CodeUserNotFound, "User does not exist.", err)
+			return nil, ce.NewError(span, ce.CodeUserNotFound, ce.MsgUserNotFound, err)
 		}
 		return nil, ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
 	}
@@ -127,32 +105,68 @@ func (r *userRepo) GetUserID(ctx context.Context, authID int64) (uuid.UUID, erro
 	return userID, nil
 }
 
-func (r *userRepo) UpdateUser(ctx context.Context, authID int64, data *entities.UserUpdate) error {
+func (r *userRepo) UpdateUser(ctx context.Context, authID int64, data *entities.UserChange) (*entities.User, error) {
 	ctx, span := otel.Tracer(userErrorTracer).Start(ctx, "UpdateUser")
 	defer span.End()
 
-	query := `
-		UPDATE users
-		SET
-			name = COALESCE($1, name),
-			bio = COALESCE($2, bio),
-			sex = COALESCE($3, sex),
-			birthdate = COALESCE($4, birthdate),
-			phone = COALESCE($5, phone),
-			updated_at = NOW()
-		WHERE
-			auth_id = $6
-			AND deleted_at IS NULL
-	`
+	setClauses := []string{}
+	args := []interface{}{}
+	argPos := 1
 
-	if err := r.database.Execute(ctx, query, data.Name, data.Bio, data.Sex, data.Birthdate, data.Phone, authID); err != nil {
-		if errors.Is(err, ce.ErrDBAffectNoRows) {
-			return ce.NewError(span, ce.CodeAuthNotFound, ce.MsgInvalidCredentials, err)
+	if data.Name != nil {
+		setClauses = append(setClauses, fmt.Sprintf("name = $%d", argPos))
+		args = append(args, *data.Name)
+		argPos++
+	}
+	if data.Bio != nil {
+		setClauses = append(setClauses, fmt.Sprintf("bio = $%d", argPos))
+		args = append(args, *data.Bio)
+		argPos++
+	}
+	if data.Sex != nil {
+		setClauses = append(setClauses, fmt.Sprintf("sex = $%d", argPos))
+		args = append(args, *data.Sex)
+		argPos++
+	}
+	if data.Birthdate != nil {
+		setClauses = append(setClauses, fmt.Sprintf("birthdate = $%d", argPos))
+		args = append(args, *data.Birthdate)
+		argPos++
+	}
+	if data.Phone != nil {
+		setClauses = append(setClauses, fmt.Sprintf("phone = $%d", argPos))
+		args = append(args, *data.Phone)
+		argPos++
+	}
+	if len(setClauses) == 0 {
+		return nil, ce.NewError(span, ce.CodeInvalidPayload, ce.MsgNoFieldsToUpdate, ce.ErrNoFieldsProvided)
+	}
+	setClauses = append(setClauses, "updated_at = NOW()")
+
+	query := fmt.Sprintf(`
+			UPDATE users
+			SET %s
+			WHERE auth_id = $%d AND deleted_at IS NULL
+			RETURNING user_id, name, bio, sex, birthdate, phone, profile_picture
+		`, strings.Join(setClauses, ", "), argPos,
+	)
+	args = append(args, authID)
+
+	row := r.database.QueryRow(ctx, query, args...)
+
+	var user entities.User
+	err := row.Scan(
+		&user.UserID, &user.Name, &user.Bio, &user.Sex,
+		&user.Birthdate, &user.Phone, &user.ProfilePicture,
+	)
+	if err != nil {
+		if errors.Is(err, ce.ErrDBQueryNoRows) {
+			return nil, ce.NewError(span, ce.CodeAuthNotFound, ce.MsgInvalidCredentials, err)
 		}
-		return ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
+		return nil, ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
 	}
 
-	return nil
+	return &user, nil
 }
 
 func (r *userRepo) UpdateProfilePicture(ctx context.Context, authID int64, profilePicture string) error {

@@ -39,6 +39,7 @@ const (
 	MsgInvalidParams      string = "Invalid params."
 	MsgInvalidPayload     string = "Invalid payload."
 	MsgNoFieldsToUpdate   string = "No fields to update."
+	MsgUserNotFound       string = "User not found."
 	MsgUnauthenticated    string = "Unauthenticated."
 )
 

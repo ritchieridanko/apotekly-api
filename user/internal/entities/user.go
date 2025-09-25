@@ -26,7 +26,7 @@ type NewUser struct {
 	ProfilePicture *string
 }
 
-type UserUpdate struct {
+type UserChange struct {
 	Name      *string
 	Bio       *string
 	Sex       *int16

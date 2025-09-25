@@ -95,13 +95,15 @@ func (h *userHandler) NewUser(ctx *gin.Context) {
 	}
 
 	response := dto.RespNewUser{
-		UserID:         user.UserID,
-		Name:           user.Name,
-		Bio:            user.Bio,
-		Sex:            user.Sex,
-		Birthdate:      user.Birthdate,
-		Phone:          user.Phone,
-		ProfilePicture: user.ProfilePicture,
+		Created: dto.RespUser{
+			UserID:         user.UserID,
+			Name:           user.Name,
+			Bio:            user.Bio,
+			Sex:            user.Sex,
+			Birthdate:      user.Birthdate,
+			Phone:          user.Phone,
+			ProfilePicture: user.ProfilePicture,
+		},
 	}
 
 	utils.SetResponse(ctx, "User created successfully.", response, http.StatusCreated)
@@ -124,7 +126,7 @@ func (h *userHandler) GetUser(ctx *gin.Context) {
 		return
 	}
 
-	response := dto.RespNewUser{
+	response := dto.RespUser{
 		UserID:         user.UserID,
 		Name:           user.Name,
 		Bio:            user.Bio,
@@ -148,20 +150,20 @@ func (h *userHandler) UpdateUser(ctx *gin.Context) {
 		return
 	}
 
-	var payload dto.ReqUserUpdate
+	var payload dto.ReqUpdateUser
 	if err := ctx.ShouldBindJSON(&payload); err != nil {
 		err := ce.NewError(span, ce.CodeInvalidPayload, ce.MsgInvalidPayload, err)
 		ctx.Error(err)
 		return
 	}
 
-	if validateErr := utils.ValidateUserUpdate(payload); validateErr != "" {
+	if validateErr := utils.ValidateUserChange(payload); validateErr != "" {
 		err := ce.NewError(span, ce.CodeInvalidPayload, validateErr, errors.New("invalid payload"))
 		ctx.Error(err)
 		return
 	}
 
-	data := entities.UserUpdate{
+	data := entities.UserChange{
 		Name:      payload.Name,
 		Bio:       payload.Bio,
 		Sex:       payload.Sex,
@@ -169,12 +171,25 @@ func (h *userHandler) UpdateUser(ctx *gin.Context) {
 		Phone:     payload.Phone,
 	}
 
-	if err := h.uu.UpdateUser(ctxWithTracer, authID, &data); err != nil {
+	user, err := h.uu.UpdateUser(ctxWithTracer, authID, &data)
+	if err != nil {
 		ctx.Error(err)
 		return
 	}
 
-	utils.SetResponse(ctx, "Data updated successfully.", nil, http.StatusOK)
+	response := dto.RespUpdateUser{
+		Updated: dto.RespUser{
+			UserID:         user.UserID,
+			Name:           user.Name,
+			Bio:            user.Bio,
+			Sex:            user.Sex,
+			Birthdate:      user.Birthdate,
+			Phone:          user.Phone,
+			ProfilePicture: user.ProfilePicture,
+		},
+	}
+
+	utils.SetResponse(ctx, "User updated successfully.", response, http.StatusOK)
 }
 
 func (h *userHandler) ChangeProfilePicture(ctx *gin.Context) {
@@ -218,5 +233,5 @@ func (h *userHandler) ChangeProfilePicture(ctx *gin.Context) {
 		return
 	}
 
-	utils.SetResponse(ctx, "Profile picture updated.", nil, http.StatusOK)
+	utils.SetResponse(ctx, "Profile picture changed.", nil, http.StatusOK)
 }

@@ -7,6 +7,16 @@ import (
 	"github.com/google/uuid"
 )
 
+type RespUser struct {
+	UserID         uuid.UUID  `json:"user_id"`
+	Name           string     `json:"name"`
+	Bio            *string    `json:"bio"`
+	Sex            *int16     `json:"sex"`
+	Birthdate      *time.Time `json:"birthdate"`
+	Phone          *string    `json:"phone"`
+	ProfilePicture *string    `json:"profile_picture"`
+}
+
 type ReqNewUser struct {
 	Name      string                `form:"name" binding:"required"`
 	Bio       *string               `form:"bio"`
@@ -17,19 +27,17 @@ type ReqNewUser struct {
 }
 
 type RespNewUser struct {
-	UserID         uuid.UUID  `json:"user_id"`
-	Name           string     `json:"name"`
-	Bio            *string    `json:"bio"`
-	Sex            *int16     `json:"sex"`
-	Birthdate      *time.Time `json:"birthdate"`
-	Phone          *string    `json:"phone"`
-	ProfilePicture *string    `json:"profile_picture"`
+	Created RespUser `json:"created"`
 }
 
-type ReqUserUpdate struct {
-	Name      *string    `json:"name,omitempty"`
-	Bio       *string    `json:"bio,omitempty"`
-	Sex       *int16     `json:"sex,omitempty"`
-	Birthdate *time.Time `json:"birthdate,omitempty"`
-	Phone     *string    `json:"phone,omitempty"`
+type ReqUpdateUser struct {
+	Name      *string    `json:"name"`
+	Bio       *string    `json:"bio"`
+	Sex       *int16     `json:"sex"`
+	Birthdate *time.Time `json:"birthdate"`
+	Phone     *string    `json:"phone"`
+}
+
+type RespUpdateUser struct {
+	Updated RespUser `json:"updated"`
 }
