@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"strconv"
 	"strings"
 
 	"golang.org/x/text/cases"
@@ -23,6 +24,10 @@ func ToTitlecase(name string) string {
 	default:
 		return titleCaser.String(strings.Join(names, " "))
 	}
+}
+
+func ToInt64(value string) (number int64, err error) {
+	return strconv.ParseInt(value, 10, 64)
 }
 
 func min(a, b int) int {

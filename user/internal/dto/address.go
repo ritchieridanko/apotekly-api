@@ -34,3 +34,8 @@ type RespNewAddress struct {
 	Latitude    float64 `json:"latitude"`
 	Longitude   float64 `json:"longitude"`
 }
+
+type RespDeleteAddress struct {
+	DeletedID int64  `json:"deleted_id"`
+	UpdatedID *int64 `json:"updated_id,omitempty"`
+}

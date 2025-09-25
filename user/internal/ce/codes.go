@@ -25,6 +25,7 @@ const (
 	CodeDBTransaction        internalErrorCode = "DB_TRANSACTION_ERROR"
 	CodeFileBuffer           internalErrorCode = "FILE_BUFFER_ERROR"
 	CodeFileUploadFailed     internalErrorCode = "FILE_UPLOAD_FAILED_ERROR"
+	CodeInvalidParams        internalErrorCode = "INVALID_PARAMS_ERROR"
 	CodeInvalidPayload       internalErrorCode = "INVALID_PAYLOAD_ERROR"
 	CodeRequestFile          internalErrorCode = "REQUEST_FILE_ERROR"
 	CodeUserNotFound         internalErrorCode = "USER_NOT_FOUND_ERROR"
@@ -34,6 +35,7 @@ const (
 const (
 	MsgInternalServer     string = "Internal server error."
 	MsgInvalidCredentials string = "Invalid credentials."
+	MsgInvalidParams      string = "Invalid params."
 	MsgInvalidPayload     string = "Invalid payload."
 	MsgUnauthenticated    string = "Unauthenticated."
 )

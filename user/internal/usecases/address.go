@@ -17,6 +17,7 @@ const addressErrorTracer string = "usecase.address"
 type AddressUsecase interface {
 	NewAddress(ctx context.Context, authID int64, data *entities.NewAddress) (address *entities.Address, err error)
 	GetAllAddresses(ctx context.Context, authID int64) (addresses []entities.Address, err error)
+	DeleteAddress(ctx context.Context, authID, addressID int64) (deletedID int64, newPrimaryID int64, err error)
 }
 
 type addressUsecase struct {
@@ -34,12 +35,12 @@ func (u *addressUsecase) NewAddress(ctx context.Context, authID int64, data *ent
 
 	var address *entities.Address
 	err := u.tx.WithTx(ctx, func(ctx context.Context) (err error) {
-		hasPrimaryAddress, err := u.ar.HasPrimaryAddress(ctx, authID)
+		hasPrimaryAddress, err := u.ar.HasPrimary(ctx, authID)
 		if err != nil {
 			return err
 		}
 		if hasPrimaryAddress && data.IsPrimary {
-			if err := u.ar.UnsetPrimaryAddress(ctx, authID); err != nil {
+			if err := u.ar.UnsetPrimary(ctx, authID); err != nil {
 				return err
 			}
 		}
@@ -68,4 +69,35 @@ func (u *addressUsecase) GetAllAddresses(ctx context.Context, authID int64) ([]e
 	defer span.End()
 
 	return u.ar.GetAll(ctx, authID)
+}
+
+func (u *addressUsecase) DeleteAddress(ctx context.Context, authID, addressID int64) (int64, int64, error) {
+	ctx, span := otel.Tracer(addressErrorTracer).Start(ctx, "DeleteAddress")
+	defer span.End()
+
+	var deletedID, newPrimaryID int64
+	err := u.tx.WithTx(ctx, func(ctx context.Context) (err error) {
+		deletedID, err = u.ar.Delete(ctx, authID, addressID)
+		if err != nil {
+			return err
+		}
+
+		hasPrimaryAddress, err := u.ar.HasPrimary(ctx, authID)
+		if err != nil {
+			return err
+		}
+		if !hasPrimaryAddress {
+			newPrimaryID, err = u.ar.SetLastAsPrimary(ctx, authID)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return deletedID, newPrimaryID, nil
 }

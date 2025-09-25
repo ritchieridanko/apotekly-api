@@ -33,7 +33,7 @@ func (e *Error) Error() (err string) {
 
 func (e *Error) ToExternalErrorCode() (externalCode int) {
 	switch e.Code {
-	case CodeInvalidPayload:
+	case CodeInvalidParams, CodeInvalidPayload:
 		return http.StatusBadRequest
 	case
 		CodeAuthAudienceNotFound,

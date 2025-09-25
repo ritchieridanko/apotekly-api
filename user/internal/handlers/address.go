@@ -19,6 +19,7 @@ const addressErrorTracer string = "handler.address"
 type AddressHandler interface {
 	NewAddress(ctx *gin.Context)
 	GetAllAddresses(ctx *gin.Context)
+	DeleteAddress(ctx *gin.Context)
 }
 
 type addressHandler struct {
@@ -148,6 +149,49 @@ func (h *addressHandler) GetAllAddresses(ctx *gin.Context) {
 		return
 	}
 
+	response := h.setAddressesAsResponse(addresses)
+
+	utils.SetResponse(ctx, "ok", response, http.StatusOK)
+}
+
+func (h *addressHandler) DeleteAddress(ctx *gin.Context) {
+	ctxWithTracer, span := otel.Tracer(addressErrorTracer).Start(ctx.Request.Context(), "DeleteAddress")
+	defer span.End()
+
+	authID, err := utils.ContextGetAuthID(ctxWithTracer)
+	if err != nil {
+		err := ce.NewError(span, ce.CodeContextValueNotFound, ce.MsgInternalServer, err)
+		ctx.Error(err)
+		return
+	}
+
+	addressID, err := utils.ToInt64(ctx.Param("id"))
+	if err != nil {
+		err := ce.NewError(span, ce.CodeInvalidParams, ce.MsgInvalidParams, err)
+		ctx.Error(err)
+		return
+	}
+
+	deletedID, newPrimaryID, err := h.au.DeleteAddress(ctxWithTracer, authID, addressID)
+	if err != nil {
+		ctx.Error(err)
+		return
+	}
+
+	var updatedID *int64
+	if newPrimaryID != 0 {
+		updatedID = &newPrimaryID
+	}
+
+	response := dto.RespDeleteAddress{
+		DeletedID: deletedID,
+		UpdatedID: updatedID,
+	}
+
+	utils.SetResponse(ctx, "Address deleted successfully.", response, http.StatusOK)
+}
+
+func (h *addressHandler) setAddressesAsResponse(addresses []entities.Address) []dto.RespNewAddress {
 	response := make([]dto.RespNewAddress, 0, len(addresses))
 	for _, address := range addresses {
 		if address.AdminLevel1 != nil {
@@ -188,5 +232,5 @@ func (h *addressHandler) GetAllAddresses(ctx *gin.Context) {
 		response = append(response, addr)
 	}
 
-	utils.SetResponse(ctx, "ok", response, http.StatusOK)
+	return response
 }

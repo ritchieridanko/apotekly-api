@@ -11,5 +11,7 @@ func addressRouters(h handlers.AddressHandler) func(*gin.RouterGroup) {
 		rg.GET("", middlewares.Authenticate(), h.GetAllAddresses)
 
 		rg.POST("", middlewares.Authenticate(), middlewares.RequireVerified(), h.NewAddress)
+
+		rg.DELETE("/:id", middlewares.Authenticate(), middlewares.RequireVerified(), h.DeleteAddress)
 	}
 }
