@@ -22,17 +22,17 @@ func main() {
 	// connect to DB
 	db, err := postgresql.Connect()
 	if err != nil {
-		log.Fatalln("FATAL -> failed to connect to database:", err)
+		log.Fatalln("FATAL -> failed to connect to database:", err.Error())
 	}
 	defer db.Close()
 
 	if *up {
 		if err := database.RunMigrations(db); err != nil {
-			log.Fatalln("FATAL -> failed to apply migrations:", err)
+			log.Fatalln("FATAL -> failed to apply migrations:", err.Error())
 		}
 	} else if *down >= 0 {
 		if err := database.RollbackMigrations(db, *down); err != nil {
-			log.Fatalln("FATAL -> failed to rollback migrations:", err)
+			log.Fatalln("FATAL -> failed to rollback migrations:", err.Error())
 		}
 	} else {
 		log.Println("WARNING -> no action specified (use -up, -down, or -down N)")

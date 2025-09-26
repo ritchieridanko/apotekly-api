@@ -75,7 +75,7 @@ func (h *userHandler) NewUser(ctx *gin.Context) {
 	if payload.Image != nil {
 		file, err := payload.Image.Open()
 		if err != nil {
-			log.Println("FAIL -> failed to open image:", err)
+			log.Println("WARNING -> failed to open and upload image:", err.Error())
 		} else {
 			defer file.Close()
 

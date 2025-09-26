@@ -56,7 +56,7 @@ func (u *userUsecase) NewUser(ctx context.Context, authID int64, data *entities.
 		if image != nil {
 			imageURL, err := u.uploadImage(ctx, image, userID.String(), "pp", "users", true)
 			if err != nil {
-				log.Println("FAIL -> failed to upload image:", err)
+				log.Println("WARNING -> failed to upload image:", err.Error())
 			} else {
 				pictureURL = &imageURL
 			}
