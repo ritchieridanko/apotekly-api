@@ -25,6 +25,7 @@ type AuthUsecase interface {
 	Login(ctx context.Context, data *entities.GetAuth, request *entities.NewRequest) (token *entities.AuthToken, err error)
 	Logout(ctx context.Context, sessionToken string) (err error)
 	ChangeEmail(ctx context.Context, authID int64, newEmail string) (err error)
+	ConfirmEmailChange(ctx context.Context, token string) (err error)
 	ChangePassword(ctx context.Context, authID int64, data *entities.PasswordChange) (err error)
 	ForgotPassword(ctx context.Context, email string) (err error)
 	ResetPassword(ctx context.Context, data *entities.NewPassword) (err error)
@@ -120,7 +121,7 @@ func (u *authUsecase) Register(ctx context.Context, data *entities.NewAuth, requ
 
 	verificationToken := utils.GenerateRandomToken()
 	tokenDuration := time.Duration(config.AuthGetVerifyTokenDuration()) * time.Minute
-	if err := u.cache.NewOrReplaceVerificationToken(ctx, authID, verificationToken, tokenDuration); err != nil {
+	if err := u.cache.NewVerificationToken(ctx, authID, verificationToken, tokenDuration); err != nil {
 		log.Println("WARNING -> failed to store verification token in cache after registration:", err.Error())
 		return &token, nil
 	}
@@ -212,27 +213,43 @@ func (u *authUsecase) ChangeEmail(ctx context.Context, authID int64, newEmail st
 	ctx, span := otel.Tracer(authErrorTracer).Start(ctx, "ChangeEmail")
 	defer span.End()
 
-	return u.tx.WithTx(ctx, func(ctx context.Context) error {
-		auth, err := u.ar.GetByID(ctx, authID)
-		if err != nil {
-			return err
-		}
-		if auth.Password == nil {
-			// email cannot be changed if registered with oauth
-			return ce.NewError(span, ce.CodeOAuthEmailChange, "OAuth account cannot change email.", errors.New("email change with oauth account"))
-		}
+	auth, err := u.ar.GetByID(ctx, authID)
+	if err != nil {
+		return err
+	}
+	if auth.Password == nil {
+		// email cannot be changed if registered with oauth
+		return ce.NewError(span, ce.CodeOAuthEmailChange, "OAuth account cannot change email.", errors.New("email change with oauth account"))
+	}
 
-		normalizedEmail := utils.NormalizeString(newEmail)
-		exists, err := u.ar.IsEmailRegistered(ctx, normalizedEmail)
-		if err != nil {
-			return err
-		}
-		if exists {
-			return ce.NewError(span, ce.CodeAuthEmailConflict, "Email is already registered.", errors.New("registration email conflict"))
-		}
+	normalizedEmail := utils.NormalizeString(newEmail)
+	exists, err := u.ar.IsEmailRegistered(ctx, normalizedEmail)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return ce.NewError(span, ce.CodeAuthEmailConflict, "Email is already registered.", errors.New("email change conflict"))
+	}
 
-		return u.ar.UpdateEmail(ctx, auth.ID, normalizedEmail)
-	})
+	token := utils.GenerateRandomToken()
+	tokenDuration := time.Duration(config.AuthGetChangeTokenDuration()) * time.Minute
+	if err := u.cache.NewEmailChangeToken(ctx, auth.ID, normalizedEmail, token, tokenDuration); err != nil {
+		return err
+	}
+
+	return u.email.SendEmailChangeToken(ctx, normalizedEmail, token)
+}
+
+func (u *authUsecase) ConfirmEmailChange(ctx context.Context, token string) error {
+	ctx, span := otel.Tracer(authErrorTracer).Start(ctx, "ConfirmEmailChange")
+	defer span.End()
+
+	authID, newEmail, err := u.cache.ConsumeEmailChangeToken(ctx, token)
+	if err != nil {
+		return err
+	}
+
+	return u.ar.UpdateEmail(ctx, authID, newEmail)
 }
 
 func (u *authUsecase) ChangePassword(ctx context.Context, authID int64, data *entities.PasswordChange) error {
@@ -278,7 +295,7 @@ func (u *authUsecase) ForgotPassword(ctx context.Context, email string) error {
 
 	token := utils.GenerateRandomToken()
 	tokenDuration := time.Duration(config.AuthGetResetTokenDuration()) * time.Minute
-	if err := u.cache.NewOrReplacePasswordResetToken(ctx, auth.ID, token, tokenDuration); err != nil {
+	if err := u.cache.NewPasswordResetToken(ctx, auth.ID, token, tokenDuration); err != nil {
 		return err
 	}
 
@@ -316,7 +333,7 @@ func (u *authUsecase) ResendVerification(ctx context.Context, authID int64) erro
 
 	token := utils.GenerateRandomToken()
 	tokenDuration := time.Duration(config.AuthGetVerifyTokenDuration()) * time.Minute
-	if err := u.cache.NewOrReplaceVerificationToken(ctx, auth.ID, token, tokenDuration); err != nil {
+	if err := u.cache.NewVerificationToken(ctx, auth.ID, token, tokenDuration); err != nil {
 		return err
 	}
 

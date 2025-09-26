@@ -132,7 +132,7 @@ func (u *oAuthUsecase) Authenticate(ctx context.Context, data *entities.OAuth, r
 	if newAccount {
 		verificationToken := utils.GenerateRandomToken()
 		tokenDuration := time.Duration(config.AuthGetVerifyTokenDuration()) * time.Minute
-		if err := u.cache.NewOrReplaceVerificationToken(ctx, authID, verificationToken, tokenDuration); err != nil {
+		if err := u.cache.NewVerificationToken(ctx, authID, verificationToken, tokenDuration); err != nil {
 			log.Println("WARNING -> failed to store verification token in cache after registration:", err.Error())
 			return &token, nil
 		}

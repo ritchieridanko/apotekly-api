@@ -23,6 +23,7 @@ type EmailService interface {
 	SendPasswordResetToken(ctx context.Context, email, token string) (err error)
 	SendVerificationToken(ctx context.Context, email, token string) (err error)
 	SendWelcomeMessage(ctx context.Context, email, token string) (err error)
+	SendEmailChangeToken(ctx context.Context, email, token string) (err error)
 }
 
 type emailService struct {
@@ -111,6 +112,29 @@ func (es *emailService) SendWelcomeMessage(ctx context.Context, email, token str
 	}
 
 	message := es.buildMessage([]string{email}, "Welcome to Apotekly", body.String(), "")
+	return es.sendEmail(ctx, message)
+}
+
+func (es *emailService) SendEmailChangeToken(ctx context.Context, email, token string) error {
+	ctx, span := otel.Tracer(emailErrorTracer).Start(ctx, "SendEmailChangeToken")
+	defer span.End()
+
+	data := struct {
+		Email string
+		URL   string
+		Year  int
+	}{
+		Email: email,
+		URL:   utils.GenerateURLWithTokenQuery("/auth/change-email", token),
+		Year:  time.Now().UTC().Year(),
+	}
+
+	var body bytes.Buffer
+	if err := es.template.ExecuteTemplate(&body, "email_change.html", data); err != nil {
+		return ce.NewError(span, ce.CodeEmailTemplateParsing, ce.MsgInternalServer, err)
+	}
+
+	message := es.buildMessage([]string{email}, "Confirm Your New Email", body.String(), "")
 	return es.sendEmail(ctx, message)
 }
 

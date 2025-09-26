@@ -15,6 +15,7 @@ type authConfig struct {
 	SessionDuration     int
 	ResetTokenDuration  int
 	VerifyTokenDuration int
+	ChangeTokenDuration int
 	LockDuration        int
 }
 
@@ -30,6 +31,7 @@ func loadAuthConfig() {
 		SessionDuration:     getNumberEnv("SESSION_DURATION"),
 		ResetTokenDuration:  getNumberEnv("RESET_TOKEN_DURATION"),
 		VerifyTokenDuration: getNumberEnv("VERIFY_TOKEN_DURATION"),
+		ChangeTokenDuration: getNumberEnv("EMAIL_CHANGE_TOKEN_DURATION"),
 		LockDuration:        getNumberEnv("LOCK_DURATION"),
 	}
 }
@@ -64,6 +66,10 @@ func AuthGetResetTokenDuration() (duration int) {
 
 func AuthGetVerifyTokenDuration() (duration int) {
 	return authCfg.VerifyTokenDuration
+}
+
+func AuthGetChangeTokenDuration() (duration int) {
+	return authCfg.ChangeTokenDuration
 }
 
 func AuthGetLockDuration() (duration int) {

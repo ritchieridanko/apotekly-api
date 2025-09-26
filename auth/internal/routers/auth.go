@@ -10,6 +10,7 @@ func authRouters(h handlers.AuthHandler) func(*gin.RouterGroup) {
 	return func(rg *gin.RouterGroup) {
 		rg.GET("/email/available", h.IsEmailRegistered)
 		rg.GET("/verify-email/confirm", h.VerifyEmail)
+		rg.GET("/change-email/confirm", h.ConfirmEmailChange)
 
 		rg.POST("/register", h.Register)
 		rg.POST("/login", h.Login)
@@ -20,7 +21,7 @@ func authRouters(h handlers.AuthHandler) func(*gin.RouterGroup) {
 		rg.POST("/reset-password/validate", h.IsResetTokenValid)
 		rg.POST("/verify-email/resend", middlewares.Authenticate(), h.ResendVerification)
 
-		rg.PATCH("/email", middlewares.Authenticate(), middlewares.RequireVerified(), h.ChangeEmail)
+		rg.PATCH("/change-email/request", middlewares.Authenticate(), middlewares.RequireVerified(), h.ChangeEmail)
 		rg.PATCH("/password", middlewares.Authenticate(), middlewares.RequireVerified(), h.ChangePassword)
 	}
 }

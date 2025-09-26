@@ -22,6 +22,7 @@ type AuthHandler interface {
 	Login(ctx *gin.Context)
 	Logout(ctx *gin.Context)
 	ChangeEmail(ctx *gin.Context)
+	ConfirmEmailChange(ctx *gin.Context)
 	ChangePassword(ctx *gin.Context)
 	ForgotPassword(ctx *gin.Context)
 	ResetPassword(ctx *gin.Context)
@@ -159,6 +160,32 @@ func (h *authHandler) ChangeEmail(ctx *gin.Context) {
 	}
 
 	if err := h.au.ChangeEmail(ctxWithTracer, authID, payload.NewEmail); err != nil {
+		ctx.Error(err)
+		return
+	}
+
+	utils.SetResponse(ctx, "Link sent. Please check your email!", nil, http.StatusOK)
+}
+
+func (h *authHandler) ConfirmEmailChange(ctx *gin.Context) {
+	ctxWithTracer, span := otel.Tracer(authErrorTracer).Start(ctx.Request.Context(), "ConfirmEmailChange")
+	defer span.End()
+
+	var params dto.ReqConfirmEmailChange
+	if err := ctx.ShouldBindQuery(&params); err != nil {
+		err := ce.NewError(span, ce.CodeInvalidParams, ce.MsgInvalidParams, err)
+		ctx.Error(err)
+		return
+	}
+
+	token := strings.TrimSpace(params.Token)
+	if token == "" {
+		err := ce.NewError(span, ce.CodeInvalidParams, ce.MsgInvalidParams, errors.New("email change token not found in params"))
+		ctx.Error(err)
+		return
+	}
+
+	if err := h.au.ConfirmEmailChange(ctxWithTracer, token); err != nil {
 		ctx.Error(err)
 		return
 	}

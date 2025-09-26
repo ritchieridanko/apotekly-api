@@ -19,10 +19,12 @@ type CacheService interface {
 	Del(ctx context.Context, keys ...string) (err error)
 
 	ShouldLockAccount(ctx context.Context, authID int64) (shouldBe bool, err error)
-	NewOrReplacePasswordResetToken(ctx context.Context, authID int64, token string, duration time.Duration) (err error)
+	NewPasswordResetToken(ctx context.Context, authID int64, token string, duration time.Duration) (err error)
 	ConsumePasswordResetToken(ctx context.Context, token string) (authID int64, err error)
-	NewOrReplaceVerificationToken(ctx context.Context, authID int64, token string, duration time.Duration) (err error)
+	NewVerificationToken(ctx context.Context, authID int64, token string, duration time.Duration) (err error)
 	ConsumeVerificationToken(ctx context.Context, token string) (authID int64, err error)
+	NewEmailChangeToken(ctx context.Context, authID int64, newEmail, token string, duration time.Duration) (err error)
+	ConsumeEmailChangeToken(ctx context.Context, token string) (authID int64, newEmail string, err error)
 }
 
 type cacheService struct {
@@ -112,8 +114,8 @@ func (cs *cacheService) ShouldLockAccount(ctx context.Context, authID int64) (bo
 	return result == 1, nil
 }
 
-func (cs *cacheService) NewOrReplacePasswordResetToken(ctx context.Context, authID int64, token string, duration time.Duration) error {
-	ctx, span := otel.Tracer(cacheErrorTracer).Start(ctx, "NewOrReplacePasswordResetToken")
+func (cs *cacheService) NewPasswordResetToken(ctx context.Context, authID int64, token string, duration time.Duration) error {
+	ctx, span := otel.Tracer(cacheErrorTracer).Start(ctx, "NewPasswordResetToken")
 	defer span.End()
 
 	authKey := utils.CacheCreateKey(constants.CacheKeyPasswordResetAuth, authID)
@@ -179,8 +181,8 @@ func (cs *cacheService) ConsumePasswordResetToken(ctx context.Context, token str
 	return authID, nil
 }
 
-func (cs *cacheService) NewOrReplaceVerificationToken(ctx context.Context, authID int64, token string, duration time.Duration) error {
-	ctx, span := otel.Tracer(cacheErrorTracer).Start(ctx, "NewOrReplaceVerificationToken")
+func (cs *cacheService) NewVerificationToken(ctx context.Context, authID int64, token string, duration time.Duration) error {
+	ctx, span := otel.Tracer(cacheErrorTracer).Start(ctx, "NewVerificationToken")
 	defer span.End()
 
 	authKey := utils.CacheCreateKey(constants.CacheKeyVerificationAuth, authID)
@@ -244,4 +246,80 @@ func (cs *cacheService) ConsumeVerificationToken(ctx context.Context, token stri
 	}
 
 	return authID, nil
+}
+
+func (cs *cacheService) NewEmailChangeToken(ctx context.Context, authID int64, newEmail, token string, duration time.Duration) error {
+	ctx, span := otel.Tracer(cacheErrorTracer).Start(ctx, "NewEmailChangeToken")
+	defer span.End()
+
+	authKey := utils.CacheCreateKey(constants.CacheKeyEmailChangeAuth, authID)
+	tokenKey := utils.CacheCreateKey(constants.CacheKeyEmailChangeToken, token)
+
+	script := redis.NewScript(`
+		local oldToken = redis.call("GET", KEYS[1])
+		if oldToken then
+			redis.call("DEL", KEYS[1])
+			redis.call("DEL", KEYS[3] .. ":" .. oldToken)
+		end
+		redis.call("SET", KEYS[1], ARGV[1], "EX", ARGV[4])
+		redis.call("HSET", KEYS[2], "authID", ARGV[2], "newEmail", ARGV[3])
+		redis.call("EXPIRE", KEYS[2], ARGV[4])
+		return 1
+	`)
+
+	_, err := script.Run(
+		ctx, cs.client,
+		[]string{authKey, tokenKey, constants.CacheKeyEmailChangeToken},
+		token, authID, newEmail, int(duration.Seconds()),
+	).Result()
+	if err != nil {
+		return ce.NewError(span, ce.CodeCacheScriptExecution, ce.MsgInternalServer, err)
+	}
+
+	return nil
+}
+
+func (cs *cacheService) ConsumeEmailChangeToken(ctx context.Context, token string) (int64, string, error) {
+	ctx, span := otel.Tracer(cacheErrorTracer).Start(ctx, "ConsumeEmailChangeToken")
+	defer span.End()
+
+	tokenKey := utils.CacheCreateKey(constants.CacheKeyEmailChangeToken, token)
+
+	script := redis.NewScript(`
+		local data = redis.call("HMGET", KEYS[1], "authID", "newEmail")
+		if data and data[1] then
+			local authID = data[1]
+			local newEmail = data[2]
+			redis.call("DEL", KEYS[1])
+			redis.call("DEL", KEYS[2] .. ":" .. authID)
+			return {authID, newEmail}
+		end
+		return nil
+	`)
+
+	result, err := script.Run(ctx, cs.client, []string{tokenKey, constants.CacheKeyEmailChangeAuth}).Result()
+	if err == redis.Nil || result == nil {
+		return 0, "", ce.NewError(span, ce.CodeCacheValueNotFound, ce.MsgInvalidToken, err)
+	}
+	if err != nil {
+		return 0, "", ce.NewError(span, ce.CodeCacheScriptExecution, ce.MsgInternalServer, err)
+	}
+
+	values, ok := result.([]interface{})
+	if !ok || len(values) != 2 {
+		return 0, "", ce.NewError(span, ce.CodeTypeAssertionFailed, ce.MsgInternalServer, ce.ErrTypeAssertionFailed)
+	}
+
+	authStr, ok1 := values[0].(string)
+	newEmail, ok2 := values[1].(string)
+	if !ok1 || !ok2 {
+		return 0, "", ce.NewError(span, ce.CodeTypeAssertionFailed, ce.MsgInternalServer, ce.ErrTypeAssertionFailed)
+	}
+
+	authID, err := utils.ToInt64(authStr)
+	if err != nil {
+		return 0, "", ce.NewError(span, ce.CodeTypeConversionFailed, ce.MsgInternalServer, ce.ErrTypeConversionFailed)
+	}
+
+	return authID, newEmail, nil
 }

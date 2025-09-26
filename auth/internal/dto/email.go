@@ -15,3 +15,7 @@ type RespQueryEmail struct {
 type ReqVerifyEmail struct {
 	Token string `form:"token" binding:"required"`
 }
+
+type ReqConfirmEmailChange struct {
+	Token string `form:"token" binding:"required"`
+}
