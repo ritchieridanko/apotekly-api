@@ -1,11 +1,11 @@
 package entities
 
 type NewPassword struct {
-	OldPassword string
+	Token       string
 	NewPassword string
 }
 
-type PasswordReset struct {
-	Token       string
+type PasswordChange struct {
+	OldPassword string
 	NewPassword string
 }

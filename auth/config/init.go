@@ -8,7 +8,7 @@ import (
 
 func Initialize() {
 	if err := godotenv.Load(); err != nil {
-		log.Fatalln("FATAL -> failed to load .env file:", err)
+		log.Fatalln("FATAL -> failed to load .env file:", err.Error())
 	}
 
 	loadAppConfig()

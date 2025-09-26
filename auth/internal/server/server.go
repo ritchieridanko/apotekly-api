@@ -54,7 +54,7 @@ func (a *App) Run() {
 	// initialize validators
 	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
 		if err := validators.Initialize(v); err != nil {
-			log.Fatalln("FATAL -> failed to initialize validators:", err)
+			log.Fatalln("FATAL -> failed to initialize validators:", err.Error())
 		}
 	}
 
@@ -68,7 +68,7 @@ func (a *App) Run() {
 	go func() {
 		log.Println("SUCCESS -> running server on:", config.ServerGetBaseURL())
 		if err := a.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalln("FATAL -> failed to start server:", err)
+			log.Fatalln("FATAL -> failed to start server:", err.Error())
 		}
 	}()
 
@@ -83,6 +83,6 @@ func (a *App) Run() {
 	defer cancel()
 
 	if err := a.server.Shutdown(ctx); err != nil {
-		log.Println("STOPPED -> server forced to shutdown:", err)
+		log.Println("STOPPED -> server forced to shutdown:", err.Error())
 	}
 }

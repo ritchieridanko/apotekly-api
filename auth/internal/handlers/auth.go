@@ -72,7 +72,7 @@ func (h *authHandler) Register(ctx *gin.Context) {
 	}
 
 	utils.CookieSetSession(ctx, token.SessionToken)
-	utils.SetResponse(ctx, "Registered successfully. Welcome!", response, http.StatusCreated)
+	utils.SetResponse(ctx, "Registered successfully.", response, http.StatusCreated)
 }
 
 func (h *authHandler) Login(ctx *gin.Context) {
@@ -151,7 +151,7 @@ func (h *authHandler) ChangeEmail(ctx *gin.Context) {
 		return
 	}
 
-	var payload dto.ReqEmailChange
+	var payload dto.ReqChangeEmail
 	if err := ctx.ShouldBindJSON(&payload); err != nil {
 		err := ce.NewError(span, ce.CodeInvalidPayload, ce.MsgInvalidPayload, err)
 		ctx.Error(err)
@@ -177,14 +177,14 @@ func (h *authHandler) ChangePassword(ctx *gin.Context) {
 		return
 	}
 
-	var payload dto.ReqPasswordChange
+	var payload dto.ReqChangePassword
 	if err := ctx.ShouldBindJSON(&payload); err != nil {
 		err := ce.NewError(span, ce.CodeInvalidPayload, ce.MsgInvalidPayload, err)
 		ctx.Error(err)
 		return
 	}
 
-	data := entities.NewPassword{
+	data := entities.PasswordChange{
 		OldPassword: payload.OldPassword,
 		NewPassword: payload.NewPassword,
 	}
@@ -220,7 +220,7 @@ func (h *authHandler) ResetPassword(ctx *gin.Context) {
 	ctxWithTracer, span := otel.Tracer(authErrorTracer).Start(ctx.Request.Context(), "ResetPassword")
 	defer span.End()
 
-	var payload dto.ReqPasswordReset
+	var payload dto.ReqResetPassword
 	if err := ctx.ShouldBindJSON(&payload); err != nil {
 		err := ce.NewError(span, ce.CodeInvalidPayload, ce.MsgInvalidPayload, err)
 		ctx.Error(err)
@@ -229,12 +229,12 @@ func (h *authHandler) ResetPassword(ctx *gin.Context) {
 
 	token := strings.TrimSpace(payload.Token)
 	if token == "" {
-		err := ce.NewError(span, ce.CodeInvalidPayload, ce.MsgInvalidPayload, errors.New("password reset token not found in payload"))
+		err := ce.NewError(span, ce.CodeInvalidPayload, ce.MsgInvalidPayload, errors.New("reset token not found in payload"))
 		ctx.Error(err)
 		return
 	}
 
-	data := entities.PasswordReset{
+	data := entities.NewPassword{
 		Token:       token,
 		NewPassword: payload.NewPassword,
 	}
@@ -270,7 +270,7 @@ func (h *authHandler) VerifyEmail(ctx *gin.Context) {
 	ctxWithTracer, span := otel.Tracer(authErrorTracer).Start(ctx.Request.Context(), "VerifyEmail")
 	defer span.End()
 
-	var params dto.ReqEmailVerification
+	var params dto.ReqVerifyEmail
 	if err := ctx.ShouldBindQuery(&params); err != nil {
 		err := ce.NewError(span, ce.CodeInvalidParams, ce.MsgInvalidParams, err)
 		ctx.Error(err)
@@ -279,7 +279,7 @@ func (h *authHandler) VerifyEmail(ctx *gin.Context) {
 
 	token := strings.TrimSpace(params.Token)
 	if token == "" {
-		err := ce.NewError(span, ce.CodeInvalidParams, ce.MsgInvalidParams, errors.New("email verification token not found in params"))
+		err := ce.NewError(span, ce.CodeInvalidParams, ce.MsgInvalidParams, errors.New("verification token not found in params"))
 		ctx.Error(err)
 		return
 	}
@@ -296,7 +296,7 @@ func (h *authHandler) IsEmailRegistered(ctx *gin.Context) {
 	ctxWithTracer, span := otel.Tracer(authErrorTracer).Start(ctx.Request.Context(), "IsEmailRegistered")
 	defer span.End()
 
-	var params dto.ReqEmailCheckQuery
+	var params dto.ReqQueryEmail
 	if err := ctx.ShouldBindQuery(&params); err != nil {
 		err := ce.NewError(span, ce.CodeInvalidParams, ce.MsgInvalidParams, err)
 		ctx.Error(err)
@@ -309,7 +309,7 @@ func (h *authHandler) IsEmailRegistered(ctx *gin.Context) {
 		return
 	}
 
-	response := dto.RespEmailCheckQuery{
+	response := dto.RespQueryEmail{
 		IsRegistered: isRegistered,
 	}
 
@@ -320,7 +320,7 @@ func (h *authHandler) IsResetTokenValid(ctx *gin.Context) {
 	ctxWithTracer, span := otel.Tracer(authErrorTracer).Start(ctx.Request.Context(), "IsResetTokenValid")
 	defer span.End()
 
-	var payload dto.ReqTokenCheckQuery
+	var payload dto.ReqQueryToken
 	if err := ctx.ShouldBindJSON(&payload); err != nil {
 		err := ce.NewError(span, ce.CodeInvalidPayload, ce.MsgInvalidPayload, err)
 		ctx.Error(err)
@@ -329,7 +329,7 @@ func (h *authHandler) IsResetTokenValid(ctx *gin.Context) {
 
 	token := strings.TrimSpace(payload.Token)
 	if token == "" {
-		err := ce.NewError(span, ce.CodeInvalidPayload, ce.MsgInvalidPayload, errors.New("password reset token not found in payload"))
+		err := ce.NewError(span, ce.CodeInvalidPayload, ce.MsgInvalidPayload, errors.New("reset token not found in payload"))
 		ctx.Error(err)
 		return
 	}
@@ -340,7 +340,7 @@ func (h *authHandler) IsResetTokenValid(ctx *gin.Context) {
 		return
 	}
 
-	response := dto.RespTokenCheckQuery{
+	response := dto.RespQueryToken{
 		IsValid: isValid,
 	}
 
@@ -368,16 +368,16 @@ func (h *authHandler) RefreshSession(ctx *gin.Context) {
 		return
 	}
 
-	newToken, err := h.au.RefreshSession(ctxWithTracer, token)
+	authToken, err := h.au.RefreshSession(ctxWithTracer, token)
 	if err != nil {
 		ctx.Error(err)
 		return
 	}
 
 	response := dto.RespAuth{
-		Token: newToken.AccessToken,
+		Token: authToken.AccessToken,
 	}
 
-	utils.CookieSetSession(ctx, newToken.SessionToken)
+	utils.CookieSetSession(ctx, authToken.SessionToken)
 	utils.SetResponse(ctx, "Session refreshed successfully.", response, http.StatusOK)
 }

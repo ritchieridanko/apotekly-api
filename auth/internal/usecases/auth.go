@@ -25,9 +25,9 @@ type AuthUsecase interface {
 	Login(ctx context.Context, data *entities.GetAuth, request *entities.NewRequest) (token *entities.AuthToken, err error)
 	Logout(ctx context.Context, sessionToken string) (err error)
 	ChangeEmail(ctx context.Context, authID int64, newEmail string) (err error)
-	ChangePassword(ctx context.Context, authID int64, data *entities.NewPassword) (err error)
+	ChangePassword(ctx context.Context, authID int64, data *entities.PasswordChange) (err error)
 	ForgotPassword(ctx context.Context, email string) (err error)
-	ResetPassword(ctx context.Context, data *entities.PasswordReset) (err error)
+	ResetPassword(ctx context.Context, data *entities.NewPassword) (err error)
 	ResendVerification(ctx context.Context, authID int64) (err error)
 	VerifyEmail(ctx context.Context, token string) (err error)
 	IsEmailRegistered(ctx context.Context, email string) (exists bool, err error)
@@ -152,7 +152,7 @@ func (u *authUsecase) Login(ctx context.Context, data *entities.GetAuth, request
 		return nil, ce.NewError(span, ce.CodeAuthLocked, "Your account is locked. Please try again later!", errors.New("account locked"))
 	}
 
-	totalFailedAuthKey := utils.CacheCreateKey(constants.RedisKeyTotalFailedAuth, auth.ID)
+	totalFailedAuthKey := utils.CacheCreateKey(constants.CacheKeyTotalFailedAuth, auth.ID)
 	if err := utils.ValidatePassword(*auth.Password, data.Password); err != nil {
 		shouldBeLocked, cacheErr := u.cache.ShouldLockAccount(ctx, auth.ID)
 		if cacheErr != nil {
@@ -235,7 +235,7 @@ func (u *authUsecase) ChangeEmail(ctx context.Context, authID int64, newEmail st
 	})
 }
 
-func (u *authUsecase) ChangePassword(ctx context.Context, authID int64, data *entities.NewPassword) error {
+func (u *authUsecase) ChangePassword(ctx context.Context, authID int64, data *entities.PasswordChange) error {
 	ctx, span := otel.Tracer(authErrorTracer).Start(ctx, "ChangePassword")
 	defer span.End()
 
@@ -285,7 +285,7 @@ func (u *authUsecase) ForgotPassword(ctx context.Context, email string) error {
 	return u.email.SendPasswordResetToken(ctx, auth.Email, token)
 }
 
-func (u *authUsecase) ResetPassword(ctx context.Context, data *entities.PasswordReset) error {
+func (u *authUsecase) ResetPassword(ctx context.Context, data *entities.NewPassword) error {
 	ctx, span := otel.Tracer(authErrorTracer).Start(ctx, "ResetPassword")
 	defer span.End()
 
@@ -347,7 +347,7 @@ func (u *authUsecase) IsResetTokenValid(ctx context.Context, token string) (bool
 	ctx, span := otel.Tracer(authErrorTracer).Start(ctx, "IsResetTokenValid")
 	defer span.End()
 
-	tokenKey := utils.CacheCreateKey(constants.RedisKeyPasswordResetToken, token)
+	tokenKey := utils.CacheCreateKey(constants.CacheKeyPasswordResetToken, token)
 	return u.cache.Has(ctx, tokenKey)
 }
 
@@ -382,7 +382,7 @@ func (u *authUsecase) RefreshSession(ctx context.Context, sessionToken string) (
 			return ce.NewError(span, ce.CodeJWTGenerationFailed, ce.MsgInternalServer, err)
 		}
 
-		newSessionData := entities.ReissueSession{
+		newSessionData := entities.SessionReissue{
 			AuthID:    auth.ID,
 			ParentID:  session.ID,
 			Token:     newSessionToken,

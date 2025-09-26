@@ -18,7 +18,7 @@ type CacheService interface {
 	Has(ctx context.Context, key string) (exists bool, err error)
 	Del(ctx context.Context, keys ...string) (err error)
 
-	ShouldLockAccount(ctx context.Context, authID int64) (shouldBeLocked bool, err error)
+	ShouldLockAccount(ctx context.Context, authID int64) (shouldBe bool, err error)
 	NewOrReplacePasswordResetToken(ctx context.Context, authID int64, token string, duration time.Duration) (err error)
 	ConsumePasswordResetToken(ctx context.Context, token string) (authID int64, err error)
 	NewOrReplaceVerificationToken(ctx context.Context, authID int64, token string, duration time.Duration) (err error)
@@ -87,7 +87,7 @@ func (cs *cacheService) ShouldLockAccount(ctx context.Context, authID int64) (bo
 	ctx, span := otel.Tracer(cacheErrorTracer).Start(ctx, "ShouldLockAccount")
 	defer span.End()
 
-	key := utils.CacheCreateKey(constants.RedisKeyTotalFailedAuth, authID)
+	key := utils.CacheCreateKey(constants.CacheKeyTotalFailedAuth, authID)
 
 	script := redis.NewScript(`
 		local count = redis.call("INCR", KEYS[1])
@@ -101,11 +101,9 @@ func (cs *cacheService) ShouldLockAccount(ctx context.Context, authID int64) (bo
 	`)
 
 	result, err := script.Run(
-		ctx,
-		cs.client,
-		[]string{key},
-		constants.RedisMaxTotalFailedAuth,
-		constants.RedisDurationTotalFailedAuth*60,
+		ctx, cs.client, []string{key},
+		constants.CacheMaxTotalFailedAuth,
+		constants.CacheDurationTotalFailedAuth*60,
 	).Int()
 	if err != nil {
 		return false, ce.NewError(span, ce.CodeCacheScriptExecution, ce.MsgInternalServer, err)
@@ -118,8 +116,8 @@ func (cs *cacheService) NewOrReplacePasswordResetToken(ctx context.Context, auth
 	ctx, span := otel.Tracer(cacheErrorTracer).Start(ctx, "NewOrReplacePasswordResetToken")
 	defer span.End()
 
-	authKey := utils.CacheCreateKey(constants.RedisKeyPasswordResetAuth, authID)
-	tokenKey := utils.CacheCreateKey(constants.RedisKeyPasswordResetToken, token)
+	authKey := utils.CacheCreateKey(constants.CacheKeyPasswordResetAuth, authID)
+	tokenKey := utils.CacheCreateKey(constants.CacheKeyPasswordResetToken, token)
 
 	script := redis.NewScript(`
 		local oldToken = redis.call("GET", KEYS[1])
@@ -133,16 +131,9 @@ func (cs *cacheService) NewOrReplacePasswordResetToken(ctx context.Context, auth
 	`)
 
 	_, err := script.Run(
-		ctx,
-		cs.client,
-		[]string{
-			authKey,
-			tokenKey,
-			constants.RedisKeyPasswordResetToken,
-		},
-		token,
-		authID,
-		int(duration.Seconds()),
+		ctx, cs.client,
+		[]string{authKey, tokenKey, constants.CacheKeyPasswordResetToken},
+		token, authID, int(duration.Seconds()),
 	).Result()
 	if err != nil {
 		return ce.NewError(span, ce.CodeCacheScriptExecution, ce.MsgInternalServer, err)
@@ -155,7 +146,7 @@ func (cs *cacheService) ConsumePasswordResetToken(ctx context.Context, token str
 	ctx, span := otel.Tracer(cacheErrorTracer).Start(ctx, "ConsumePasswordResetToken")
 	defer span.End()
 
-	tokenKey := utils.CacheCreateKey(constants.RedisKeyPasswordResetToken, token)
+	tokenKey := utils.CacheCreateKey(constants.CacheKeyPasswordResetToken, token)
 
 	script := redis.NewScript(`
 		local authID = redis.call("GET", KEYS[1])
@@ -167,7 +158,7 @@ func (cs *cacheService) ConsumePasswordResetToken(ctx context.Context, token str
 		return nil
 	`)
 
-	result, err := script.Run(ctx, cs.client, []string{tokenKey, constants.RedisKeyPasswordResetAuth}).Result()
+	result, err := script.Run(ctx, cs.client, []string{tokenKey, constants.CacheKeyPasswordResetAuth}).Result()
 	if err == redis.Nil {
 		return 0, ce.NewError(span, ce.CodeCacheValueNotFound, ce.MsgInvalidToken, err)
 	}
@@ -192,8 +183,8 @@ func (cs *cacheService) NewOrReplaceVerificationToken(ctx context.Context, authI
 	ctx, span := otel.Tracer(cacheErrorTracer).Start(ctx, "NewOrReplaceVerificationToken")
 	defer span.End()
 
-	authKey := utils.CacheCreateKey(constants.RedisKeyVerificationAuth, authID)
-	tokenKey := utils.CacheCreateKey(constants.RedisKeyVerificationToken, token)
+	authKey := utils.CacheCreateKey(constants.CacheKeyVerificationAuth, authID)
+	tokenKey := utils.CacheCreateKey(constants.CacheKeyVerificationToken, token)
 
 	script := redis.NewScript(`
 		local oldToken = redis.call("GET", KEYS[1])
@@ -207,16 +198,9 @@ func (cs *cacheService) NewOrReplaceVerificationToken(ctx context.Context, authI
 	`)
 
 	_, err := script.Run(
-		ctx,
-		cs.client,
-		[]string{
-			authKey,
-			tokenKey,
-			constants.RedisKeyVerificationToken,
-		},
-		token,
-		authID,
-		int(duration.Seconds()),
+		ctx, cs.client,
+		[]string{authKey, tokenKey, constants.CacheKeyVerificationToken},
+		token, authID, int(duration.Seconds()),
 	).Result()
 	if err != nil {
 		return ce.NewError(span, ce.CodeCacheScriptExecution, ce.MsgInternalServer, err)
@@ -229,7 +213,7 @@ func (cs *cacheService) ConsumeVerificationToken(ctx context.Context, token stri
 	ctx, span := otel.Tracer(cacheErrorTracer).Start(ctx, "ConsumeVerificationToken")
 	defer span.End()
 
-	tokenKey := utils.CacheCreateKey(constants.RedisKeyVerificationToken, token)
+	tokenKey := utils.CacheCreateKey(constants.CacheKeyVerificationToken, token)
 
 	script := redis.NewScript(`
 		local authID = redis.call("GET", KEYS[1])
@@ -241,7 +225,7 @@ func (cs *cacheService) ConsumeVerificationToken(ctx context.Context, token stri
 		return nil
 	`)
 
-	result, err := script.Run(ctx, cs.client, []string{tokenKey, constants.RedisKeyVerificationAuth}).Result()
+	result, err := script.Run(ctx, cs.client, []string{tokenKey, constants.CacheKeyVerificationAuth}).Result()
 	if err == redis.Nil {
 		return 0, ce.NewError(span, ce.CodeCacheValueNotFound, ce.MsgInvalidToken, err)
 	}

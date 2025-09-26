@@ -14,7 +14,7 @@ const sessionErrorTracer string = "usecase.session"
 type SessionUsecase interface {
 	NewSession(ctx context.Context, data *entities.NewSession) (sessionID int64, err error)
 	NewSessionOnRegister(ctx context.Context, data *entities.NewSession) (err error)
-	RenewSession(ctx context.Context, data *entities.ReissueSession) (newSessionID int64, err error)
+	RenewSession(ctx context.Context, data *entities.SessionReissue) (newSessionID int64, err error)
 	GetSession(ctx context.Context, token string) (session *entities.Session, err error)
 	RevokeSession(ctx context.Context, token string) (err error)
 }
@@ -40,7 +40,7 @@ func (u *sessionUsecase) NewSession(ctx context.Context, data *entities.NewSessi
 		}
 		if revokedSessionID != 0 {
 			// there was an active session that's revoked
-			reissueData := entities.ReissueSession{
+			reissueData := entities.SessionReissue{
 				AuthID:    data.AuthID,
 				ParentID:  revokedSessionID,
 				Token:     data.Token,
@@ -79,7 +79,7 @@ func (u *sessionUsecase) NewSessionOnRegister(ctx context.Context, data *entitie
 	return err
 }
 
-func (u *sessionUsecase) RenewSession(ctx context.Context, data *entities.ReissueSession) (int64, error) {
+func (u *sessionUsecase) RenewSession(ctx context.Context, data *entities.SessionReissue) (int64, error) {
 	ctx, span := otel.Tracer(sessionErrorTracer).Start(ctx, "RenewSession")
 	defer span.End()
 

@@ -21,7 +21,7 @@ import (
 const oAuthErrorTracer string = "usecase.oauth"
 
 type OAuthUsecase interface {
-	Authenticate(ctx context.Context, data *entities.NewOAuth, request *entities.NewRequest) (token *entities.AuthToken, err error)
+	Authenticate(ctx context.Context, data *entities.OAuth, request *entities.NewRequest) (token *entities.AuthToken, err error)
 }
 
 type oAuthUsecase struct {
@@ -44,7 +44,7 @@ func NewOAuthUsecase(
 	return &oAuthUsecase{oar, ar, su, tx, cache, email}
 }
 
-func (u *oAuthUsecase) Authenticate(ctx context.Context, data *entities.NewOAuth, request *entities.NewRequest) (*entities.AuthToken, error) {
+func (u *oAuthUsecase) Authenticate(ctx context.Context, data *entities.OAuth, request *entities.NewRequest) (*entities.AuthToken, error) {
 	ctx, span := otel.Tracer(oAuthErrorTracer).Start(ctx, "Authenticate")
 	defer span.End()
 

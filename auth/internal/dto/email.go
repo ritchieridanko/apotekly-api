@@ -1,17 +1,17 @@
 package dto
 
-type ReqEmailChange struct {
+type ReqChangeEmail struct {
 	NewEmail string `json:"new_email" binding:"required,email"`
 }
 
-type ReqEmailCheckQuery struct {
+type ReqQueryEmail struct {
 	Email string `form:"email" binding:"required,email"`
 }
 
-type RespEmailCheckQuery struct {
+type RespQueryEmail struct {
 	IsRegistered bool `json:"is_registered"`
 }
 
-type ReqEmailVerification struct {
+type ReqVerifyEmail struct {
 	Token string `form:"token" binding:"required"`
 }

@@ -22,7 +22,7 @@ type NewSession struct {
 	ExpiresAt time.Time
 }
 
-type ReissueSession struct {
+type SessionReissue struct {
 	AuthID    int64
 	ParentID  int64
 	Token     string

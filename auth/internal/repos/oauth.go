@@ -12,7 +12,7 @@ import (
 const oAuthErrorTracer string = "repo.oauth"
 
 type OAuthRepo interface {
-	Create(ctx context.Context, authID int64, data *entities.NewOAuth) (oauthID int64, err error)
+	Create(ctx context.Context, authID int64, data *entities.OAuth) (oauthID int64, err error)
 }
 
 type oAuthRepo struct {
@@ -23,7 +23,7 @@ func NewOAuthRepo(database db.DBService) OAuthRepo {
 	return &oAuthRepo{database}
 }
 
-func (r *oAuthRepo) Create(ctx context.Context, authID int64, data *entities.NewOAuth) (int64, error) {
+func (r *oAuthRepo) Create(ctx context.Context, authID int64, data *entities.OAuth) (int64, error) {
 	ctx, span := otel.Tracer(oAuthErrorTracer).Start(ctx, "Create")
 	defer span.End()
 

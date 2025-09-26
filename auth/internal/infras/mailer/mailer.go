@@ -40,7 +40,7 @@ func (m *mailer) Send(message *gomail.Message) error {
 	}
 
 	if err := gomail.Send(m.sender, message); err != nil {
-		log.Println("WARNING -> failed to send email, retrying:", err)
+		log.Println("WARNING -> failed to send email, retrying:", err.Error())
 
 		// reset connection
 		_ = m.sender.Close()

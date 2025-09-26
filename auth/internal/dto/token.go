@@ -1,9 +1,9 @@
 package dto
 
-type ReqTokenCheckQuery struct {
+type ReqQueryToken struct {
 	Token string `json:"token" binding:"required"`
 }
 
-type RespTokenCheckQuery struct {
+type RespQueryToken struct {
 	IsValid bool `json:"is_valid"`
 }

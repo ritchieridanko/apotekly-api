@@ -1,6 +1,6 @@
 package entities
 
-type NewOAuth struct {
+type OAuth struct {
 	Provider   int16
 	UID        string
 	Email      string

@@ -14,16 +14,16 @@ import (
 func Initialize() (db *sql.DB, cache *r.Client, mailer m.Mailer, tracer *ot.Tracer) {
 	db, err := postgresql.Connect()
 	if err != nil {
-		log.Fatalln("FATAL -> failed to connect to database:", err)
+		log.Fatalln("FATAL -> failed to connect to database:", err.Error())
 	}
 	cache, err = redis.Connect()
 	if err != nil {
-		log.Fatalln("FATAL -> failed to connect to redis:", err)
+		log.Fatalln("FATAL -> failed to connect to redis:", err.Error())
 	}
 	mailer = m.NewMailer()
 	tracer, err = ot.Initialize()
 	if err != nil {
-		log.Fatalln("FATAL -> failed to initialize tracer:", err)
+		log.Fatalln("FATAL -> failed to initialize tracer:", err.Error())
 	}
 	return db, cache, mailer, tracer
 }

@@ -159,7 +159,7 @@ func (r *authRepo) UpdateEmail(ctx context.Context, authID int64, email string) 
 	query := `
 		UPDATE auth
 		SET email = $1, email_changed_at = NOW(), updated_at = NOW()
-		WHERE id = $2
+		WHERE id = $2 AND deleted_at IS NULL
 	`
 
 	if err := r.database.Execute(ctx, query, email, authID); err != nil {
@@ -179,7 +179,7 @@ func (r *authRepo) UpdatePassword(ctx context.Context, authID int64, password st
 	query := `
 		UPDATE auth
 		SET password = $1, password_changed_at = NOW(), updated_at = NOW()
-		WHERE id = $2
+		WHERE id = $2 AND deleted_at IS NULL
 	`
 
 	if err := r.database.Execute(ctx, query, password, authID); err != nil {
@@ -221,7 +221,7 @@ func (r *authRepo) VerifyEmail(ctx context.Context, authID int64) error {
 	query := `
 		UPDATE auth
 		SET is_verified = TRUE, updated_at = NOW()
-		WHERE id = $1 AND is_verified = FALSE
+		WHERE id = $1 AND is_verified = FALSE AND deleted_at IS NULL
 	`
 
 	if err := r.database.Execute(ctx, query, authID); err != nil {
@@ -241,7 +241,7 @@ func (r *authRepo) LockAccount(ctx context.Context, authID int64, until time.Tim
 	query := `
 		UPDATE auth
 		SET locked_until = $1, updated_at = NOW()
-		WHERE id = $2
+		WHERE id = $2 AND deleted_at IS NULL
 	`
 
 	if err := r.database.Execute(ctx, query, until, authID); err != nil {

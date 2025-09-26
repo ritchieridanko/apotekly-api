@@ -64,7 +64,7 @@ func (h *oauthHandler) GoogleCallback(ctx *gin.Context) {
 		return
 	}
 
-	data := entities.NewOAuth{
+	data := entities.OAuth{
 		Provider:   constants.OAuthProviderGoogle,
 		UID:        user.ID,
 		Email:      user.Email,
@@ -123,7 +123,7 @@ func (h *oauthHandler) MicrosoftCallback(ctx *gin.Context) {
 		email = user.UserPrincipalName
 	}
 
-	data := entities.NewOAuth{
+	data := entities.OAuth{
 		Provider:   constants.OAuthProviderMicrosoft,
 		UID:        user.ID,
 		Email:      email,

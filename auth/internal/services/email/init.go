@@ -39,7 +39,7 @@ func NewService(sender mailer.Mailer) EmailService {
 	tmplDir := filepath.Join(baseDir, "templates", "*.html")
 	templates, err := template.ParseGlob(tmplDir)
 	if err != nil {
-		log.Fatalln("FATAL -> failed to parse html template files:", err)
+		log.Fatalln("FATAL -> failed to parse html template files:", err.Error())
 	}
 
 	return &emailService{config.MailerGetUser(), sender, templates}

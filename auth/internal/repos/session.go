@@ -15,7 +15,7 @@ const sessionErrorTracer string = "repo.session"
 
 type SessionRepo interface {
 	Create(ctx context.Context, data *entities.NewSession) (sessionID int64, err error)
-	Reissue(ctx context.Context, data *entities.ReissueSession) (newSessionID int64, err error)
+	Reissue(ctx context.Context, data *entities.SessionReissue) (newSessionID int64, err error)
 	GetByToken(ctx context.Context, token string) (session *entities.Session, err error)
 	RevokeByID(ctx context.Context, sessionID int64) (err error)
 	RevokeByToken(ctx context.Context, token string) (err error)
@@ -50,7 +50,7 @@ func (r *sessionRepo) Create(ctx context.Context, data *entities.NewSession) (in
 	return sessionID, nil
 }
 
-func (r *sessionRepo) Reissue(ctx context.Context, data *entities.ReissueSession) (int64, error) {
+func (r *sessionRepo) Reissue(ctx context.Context, data *entities.SessionReissue) (int64, error) {
 	ctx, span := otel.Tracer(sessionErrorTracer).Start(ctx, "Reissue")
 	defer span.End()
 
@@ -87,15 +87,8 @@ func (r *sessionRepo) GetByToken(ctx context.Context, token string) (*entities.S
 
 	var session entities.Session
 	err := row.Scan(
-		&session.ID,
-		&session.AuthID,
-		&session.ParentID,
-		&session.Token,
-		&session.UserAgent,
-		&session.IPAddress,
-		&session.CreatedAt,
-		&session.ExpiresAt,
-		&session.RevokedAt,
+		&session.ID, &session.AuthID, &session.ParentID, &session.Token, &session.UserAgent,
+		&session.IPAddress, &session.CreatedAt, &session.ExpiresAt, &session.RevokedAt,
 	)
 	if err != nil {
 		if errors.Is(err, ce.ErrDBQueryNoRows) {
