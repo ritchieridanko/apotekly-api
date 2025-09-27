@@ -1,0 +1,13 @@
+.env
+
+# Binaries
+/pharmacy/cmd/server/server
+/pharmacy/cmd/migrate/migrate
+
+# IDE/editor files
+.vscode/
+.idea/
+
+# Go build cache
+/bin/
+*.out

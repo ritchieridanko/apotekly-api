@@ -1,0 +1,40 @@
+package main
+
+import (
+	"flag"
+	"log"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/ritchieridanko/apotekly-api/pharmacy/config"
+	"github.com/ritchieridanko/apotekly-api/pharmacy/database"
+	"github.com/ritchieridanko/apotekly-api/pharmacy/internal/infras/postgresql"
+)
+
+func main() {
+	// define CLI flags
+	up := flag.Bool("up", false, "Run all migrations up")
+	down := flag.Int("down", 0, "Rollback N migrations down")
+	flag.Parse()
+
+	// load .env
+	config.Initialize()
+
+	// connect to DB
+	db, err := postgresql.Connect()
+	if err != nil {
+		log.Fatalln("FATAL -> failed to connect to database:", err.Error())
+	}
+	defer db.Close()
+
+	if *up {
+		if err := database.RunMigrations(db); err != nil {
+			log.Fatalln("FATAL -> failed to apply migrations:", err.Error())
+		}
+	} else if *down >= 0 {
+		if err := database.RollbackMigrations(db, *down); err != nil {
+			log.Fatalln("FATAL -> failed to rollback migrations:", err.Error())
+		}
+	} else {
+		log.Println("WARNING -> no action specified (use -up, -down, or -down N)")
+	}
+}
