@@ -3,12 +3,20 @@ package ce
 import (
 	"database/sql"
 	"errors"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type internalErrorCode string
 
 // internal error codes (for logs/debugging)
 const (
+	CodeAuthNotVerified      internalErrorCode = "AUTH_NOT_VERIFIED_ERROR"
+	CodeAuthAudienceNotFound internalErrorCode = "AUTH_AUDIENCE_NOT_FOUND_ERROR"
+	CodeAuthTokenExpired     internalErrorCode = "AUTH_TOKEN_EXPIRED_ERROR"
+	CodeAuthTokenMalformed   internalErrorCode = "AUTH_TOKEN_MALFORMED_ERROR"
+	CodeAuthTokenParsing     internalErrorCode = "AUTH_TOKEN_PARSING_ERROR"
+	CodeAuthUnauthenticated  internalErrorCode = "AUTH_UNAUTHENTICATED_ERROR"
 	CodeContextValueNotFound internalErrorCode = "CONTEXT_VALUE_NOT_FOUND_ERROR"
 	CodeDBDuplicateData      internalErrorCode = "DB_DUPLICATE_DATA_ERROR"
 	CodeDBQueryExecution     internalErrorCode = "DB_QUERY_EXECUTION_ERROR"
@@ -32,4 +40,6 @@ const (
 var (
 	ErrDBAffectNoRows error = errors.New("query execution affected no rows")
 	ErrDBQueryNoRows  error = sql.ErrNoRows
+	ErrTokenExpired   error = jwt.ErrTokenExpired
+	ErrTokenMalformed error = jwt.ErrTokenMalformed
 )

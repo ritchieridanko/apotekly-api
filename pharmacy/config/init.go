@@ -12,6 +12,7 @@ func Initialize() {
 	}
 
 	loadAppConfig()
+	loadAuthConfig()
 	loadDBConfig()
 	loadServerConfig()
 	loadStorageConfig()
