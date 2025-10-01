@@ -95,15 +95,7 @@ func (h *userHandler) NewUser(ctx *gin.Context) {
 	}
 
 	response := dto.RespNewUser{
-		Created: dto.RespUser{
-			ID:             user.UserID,
-			Name:           user.Name,
-			Bio:            user.Bio,
-			Sex:            user.Sex,
-			Birthdate:      user.Birthdate,
-			Phone:          user.Phone,
-			ProfilePicture: user.ProfilePicture,
-		},
+		Created: h.setUserAsResponse(*user),
 	}
 
 	utils.SetResponse(ctx, "User created successfully.", response, http.StatusCreated)
@@ -126,15 +118,7 @@ func (h *userHandler) GetUser(ctx *gin.Context) {
 		return
 	}
 
-	response := dto.RespUser{
-		ID:             user.UserID,
-		Name:           user.Name,
-		Bio:            user.Bio,
-		Sex:            user.Sex,
-		Birthdate:      user.Birthdate,
-		Phone:          user.Phone,
-		ProfilePicture: user.ProfilePicture,
-	}
+	response := h.setUserAsResponse(*user)
 
 	utils.SetResponse(ctx, "ok", response, http.StatusOK)
 }
@@ -178,15 +162,7 @@ func (h *userHandler) UpdateUser(ctx *gin.Context) {
 	}
 
 	response := dto.RespUpdateUser{
-		Updated: dto.RespUser{
-			ID:             user.UserID,
-			Name:           user.Name,
-			Bio:            user.Bio,
-			Sex:            user.Sex,
-			Birthdate:      user.Birthdate,
-			Phone:          user.Phone,
-			ProfilePicture: user.ProfilePicture,
-		},
+		Updated: h.setUserAsResponse(*user),
 	}
 
 	utils.SetResponse(ctx, "User updated successfully.", response, http.StatusOK)
@@ -234,4 +210,16 @@ func (h *userHandler) ChangeProfilePicture(ctx *gin.Context) {
 	}
 
 	utils.SetResponse(ctx, "Profile picture changed.", nil, http.StatusOK)
+}
+
+func (h *userHandler) setUserAsResponse(user entities.User) dto.RespUser {
+	return dto.RespUser{
+		ID:             user.UserID,
+		Name:           user.Name,
+		Bio:            user.Bio,
+		Sex:            user.Sex,
+		Birthdate:      user.Birthdate,
+		Phone:          user.Phone,
+		ProfilePicture: user.ProfilePicture,
+	}
 }
