@@ -23,6 +23,7 @@ const pharmacyErrorTracer string = "handler.pharmacy"
 
 type PharmacyHandler interface {
 	NewPharmacy(ctx *gin.Context)
+	GetPharmacy(ctx *gin.Context)
 }
 
 type pharmacyHandler struct {
@@ -107,31 +108,57 @@ func (h *pharmacyHandler) NewPharmacy(ctx *gin.Context) {
 	}
 
 	response := dto.RespNewPharmacy{
-		Created: dto.RespPharmacy{
-			ID:               pharmacy.PharmacyPublicID,
-			Name:             pharmacy.Name,
-			LegalName:        pharmacy.LegalName,
-			Description:      pharmacy.Description,
-			LicenseNumber:    pharmacy.LicenseNumber,
-			LicenseAuthority: pharmacy.LicenseAuthority,
-			LicenseExpiry:    pharmacy.LicenseExpiry,
-			Email:            pharmacy.Email,
-			Phone:            pharmacy.Phone,
-			Website:          pharmacy.Website,
-			Country:          utils.ToTitlecase(pharmacy.Country),
-			AdminLevel1:      utils.ToTitlecasePtr(pharmacy.AdminLevel1),
-			AdminLevel2:      utils.ToTitlecasePtr(pharmacy.AdminLevel2),
-			AdminLevel3:      utils.ToTitlecasePtr(pharmacy.AdminLevel3),
-			AdminLevel4:      utils.ToTitlecasePtr(pharmacy.AdminLevel4),
-			Street:           pharmacy.Street,
-			PostalCode:       pharmacy.PostalCode,
-			Latitude:         pharmacy.Latitude,
-			Longitude:        pharmacy.Longitude,
-			Logo:             pharmacy.Logo,
-			OpeningHours:     pharmacy.OpeningHours,
-			Status:           pharmacy.Status,
-		},
+		Created: h.setPharmacyAsResponse(*pharmacy),
 	}
 
 	utils.SetResponse(ctx, "Pharmacy created successfully.", response, http.StatusCreated)
+}
+
+func (h *pharmacyHandler) GetPharmacy(ctx *gin.Context) {
+	ctxWithTracer, span := otel.Tracer(pharmacyErrorTracer).Start(ctx.Request.Context(), "GetPharmacy")
+	defer span.End()
+
+	authID, err := utils.ContextGetAuthID(ctxWithTracer)
+	if err != nil {
+		err := ce.NewError(span, ce.CodeContextValueNotFound, ce.MsgInternalServer, err)
+		ctx.Error(err)
+		return
+	}
+
+	pharmacy, err := h.pu.GetPharmacy(ctxWithTracer, authID)
+	if err != nil {
+		ctx.Error(err)
+		return
+	}
+
+	response := h.setPharmacyAsResponse(*pharmacy)
+
+	utils.SetResponse(ctx, "ok", response, http.StatusOK)
+}
+
+func (h *pharmacyHandler) setPharmacyAsResponse(pharmacy entities.Pharmacy) dto.RespPharmacy {
+	return dto.RespPharmacy{
+		ID:               pharmacy.PharmacyPublicID,
+		Name:             pharmacy.Name,
+		LegalName:        pharmacy.LegalName,
+		Description:      pharmacy.Description,
+		LicenseNumber:    pharmacy.LicenseNumber,
+		LicenseAuthority: pharmacy.LicenseAuthority,
+		LicenseExpiry:    pharmacy.LicenseExpiry,
+		Email:            pharmacy.Email,
+		Phone:            pharmacy.Phone,
+		Website:          pharmacy.Website,
+		Country:          utils.ToTitlecase(pharmacy.Country),
+		AdminLevel1:      utils.ToTitlecasePtr(pharmacy.AdminLevel1),
+		AdminLevel2:      utils.ToTitlecasePtr(pharmacy.AdminLevel2),
+		AdminLevel3:      utils.ToTitlecasePtr(pharmacy.AdminLevel3),
+		AdminLevel4:      utils.ToTitlecasePtr(pharmacy.AdminLevel4),
+		Street:           pharmacy.Street,
+		PostalCode:       pharmacy.PostalCode,
+		Latitude:         pharmacy.Latitude,
+		Longitude:        pharmacy.Longitude,
+		Logo:             pharmacy.Logo,
+		OpeningHours:     pharmacy.OpeningHours,
+		Status:           pharmacy.Status,
+	}
 }

@@ -25,15 +25,17 @@ const (
 	CodeFileUploadFailed     internalErrorCode = "FILE_UPLOAD_FAILED_ERROR"
 	CodeInvalidParams        internalErrorCode = "INVALID_PARAMS_ERROR"
 	CodeInvalidPayload       internalErrorCode = "INVALID_PAYLOAD_ERROR"
+	CodePharmacyNotFound     internalErrorCode = "PHARMACY_NOT_FOUND_ERROR"
 	CodeRequestFile          internalErrorCode = "REQUEST_FILE_ERROR"
 )
 
 // external error messages (for end-users)
 const (
-	MsgInternalServer  string = "Internal server error."
-	MsgInvalidParams   string = "Invalid params."
-	MsgInvalidPayload  string = "Invalid payload."
-	MsgUnauthenticated string = "Unauthenticated."
+	MsgInternalServer   string = "Internal server error."
+	MsgInvalidParams    string = "Invalid params."
+	MsgInvalidPayload   string = "Invalid payload."
+	MsgPharmacyNotFound string = "Pharmacy not found."
+	MsgUnauthenticated  string = "Unauthenticated."
 )
 
 // internal error logs

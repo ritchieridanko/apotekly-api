@@ -8,6 +8,8 @@ import (
 
 func pharmacyRouters(h handlers.PharmacyHandler) func(*gin.RouterGroup) {
 	return func(rg *gin.RouterGroup) {
+		rg.GET("/me", middlewares.Authenticate(), middlewares.RequireVerified(), h.GetPharmacy)
+
 		rg.POST("", middlewares.Authenticate(), middlewares.RequireVerified(), h.NewPharmacy)
 	}
 }

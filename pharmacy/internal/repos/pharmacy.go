@@ -14,6 +14,7 @@ const pharmacyErrorTracer string = "repo.pharmacy"
 
 type PharmacyRepo interface {
 	Create(ctx context.Context, authID int64, data *entities.NewPharmacy) (pharmacy *entities.Pharmacy, err error)
+	GetByAuthID(ctx context.Context, authID int64) (pharmacy *entities.Pharmacy, err error)
 	HasPharmacy(ctx context.Context, authID int64) (exists bool, err error)
 }
 
@@ -65,6 +66,46 @@ func (r *pharmacyRepo) Create(ctx context.Context, authID int64, data *entities.
 		&pharmacy.OpeningHours, &pharmacy.Status,
 	)
 	if err != nil {
+		return nil, ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
+	}
+
+	return &pharmacy, nil
+}
+
+func (r *pharmacyRepo) GetByAuthID(ctx context.Context, authID int64) (*entities.Pharmacy, error) {
+	ctx, span := otel.Tracer(pharmacyErrorTracer).Start(ctx, "GetByAuthID")
+	defer span.End()
+
+	query := `
+		SELECT
+			pharmacy_public_id, name, legal_name, description, license_number,
+			license_authority, license_expiry, email, phone, website, country,
+			admin_level_1, admin_level_2, admin_level_3, admin_level_4, street,
+			postal_code, latitude, longitude, logo, opening_hours, status
+		FROM
+			pharmacies
+		WHERE
+			auth_id = $1
+			AND deleted_at IS NULL
+	`
+	if r.database.IsWithinTx(ctx) {
+		query += " FOR UPDATE"
+	}
+
+	row := r.database.QueryRow(ctx, query, authID)
+
+	var pharmacy entities.Pharmacy
+	err := row.Scan(
+		&pharmacy.PharmacyPublicID, &pharmacy.Name, &pharmacy.LegalName, &pharmacy.Description, &pharmacy.LicenseNumber,
+		&pharmacy.LicenseAuthority, &pharmacy.LicenseExpiry, &pharmacy.Email, &pharmacy.Phone, &pharmacy.Website,
+		&pharmacy.Country, &pharmacy.AdminLevel1, &pharmacy.AdminLevel2, &pharmacy.AdminLevel3, &pharmacy.AdminLevel4,
+		&pharmacy.Street, &pharmacy.PostalCode, &pharmacy.Latitude, &pharmacy.Longitude, &pharmacy.Logo,
+		&pharmacy.OpeningHours, &pharmacy.Status,
+	)
+	if err != nil {
+		if errors.Is(err, ce.ErrDBQueryNoRows) {
+			return nil, ce.NewError(span, ce.CodePharmacyNotFound, ce.MsgPharmacyNotFound, err)
+		}
 		return nil, ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
 	}
 

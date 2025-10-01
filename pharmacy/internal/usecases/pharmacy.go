@@ -21,6 +21,7 @@ const pharmacyErrorTracer string = "usecase.pharmacy"
 
 type PharmacyUsecase interface {
 	NewPharmacy(ctx context.Context, authID int64, data *entities.NewPharmacy, image multipart.File) (pharmacy *entities.Pharmacy, err error)
+	GetPharmacy(ctx context.Context, authID int64) (pharmacy *entities.Pharmacy, err error)
 }
 
 type pharmacyUsecase struct {
@@ -95,6 +96,13 @@ func (u *pharmacyUsecase) NewPharmacy(ctx context.Context, authID int64, data *e
 	}
 
 	return pharmacy, nil
+}
+
+func (u *pharmacyUsecase) GetPharmacy(ctx context.Context, authID int64) (*entities.Pharmacy, error) {
+	ctx, span := otel.Tracer(pharmacyErrorTracer).Start(ctx, "GetPharmacy")
+	defer span.End()
+
+	return u.pr.GetByAuthID(ctx, authID)
 }
 
 func (u *pharmacyUsecase) uploadImage(ctx context.Context, image multipart.File, publicID, prefix, folder string, overwrite bool) (imageURL string, err error) {

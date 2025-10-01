@@ -43,6 +43,8 @@ func (e *Error) ToExternalErrorCode() (externalCode int) {
 		return http.StatusUnauthorized
 	case CodeAuthNotVerified:
 		return http.StatusForbidden
+	case CodePharmacyNotFound:
+		return http.StatusNotFound
 	case CodeDBDuplicateData:
 		return http.StatusConflict
 	case
