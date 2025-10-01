@@ -24,6 +24,7 @@ const pharmacyErrorTracer string = "handler.pharmacy"
 type PharmacyHandler interface {
 	NewPharmacy(ctx *gin.Context)
 	GetPharmacy(ctx *gin.Context)
+	UpdatePharmacy(ctx *gin.Context)
 	ChangeLogo(ctx *gin.Context)
 }
 
@@ -135,6 +136,65 @@ func (h *pharmacyHandler) GetPharmacy(ctx *gin.Context) {
 	response := h.setPharmacyAsResponse(*pharmacy)
 
 	utils.SetResponse(ctx, "ok", response, http.StatusOK)
+}
+
+func (h *pharmacyHandler) UpdatePharmacy(ctx *gin.Context) {
+	ctxWithTracer, span := otel.Tracer(pharmacyErrorTracer).Start(ctx.Request.Context(), "UpdatePharmacy")
+	defer span.End()
+
+	authID, err := utils.ContextGetAuthID(ctxWithTracer)
+	if err != nil {
+		err := ce.NewError(span, ce.CodeContextValueNotFound, ce.MsgInternalServer, err)
+		ctx.Error(err)
+		return
+	}
+
+	var payload dto.ReqUpdatePharmacy
+	if err := ctx.ShouldBindJSON(&payload); err != nil {
+		err := ce.NewError(span, ce.CodeInvalidPayload, ce.MsgInvalidPayload, err)
+		ctx.Error(err)
+		return
+	}
+
+	if validateErr := utils.ValidatePharmacyChange(payload); validateErr != "" {
+		err := ce.NewError(span, ce.CodeInvalidPayload, validateErr, errors.New("invalid payload"))
+		ctx.Error(err)
+		return
+	}
+
+	data := entities.PharmacyChange{
+		Name:             utils.TrimSpacePtr(payload.Name),
+		LegalName:        utils.TrimSpacePtr(payload.LegalName),
+		Description:      payload.Description,
+		LicenseNumber:    payload.LicenseNumber,
+		LicenseAuthority: payload.LicenseAuthority,
+		LicenseExpiry:    payload.LicenseExpiry,
+		Email:            payload.Email,
+		Phone:            payload.Phone,
+		Website:          payload.Website,
+		Country:          utils.NormalizePtr(payload.Country),
+		AdminLevel1:      utils.NormalizePtr(payload.AdminLevel1),
+		AdminLevel2:      utils.NormalizePtr(payload.AdminLevel2),
+		AdminLevel3:      utils.NormalizePtr(payload.AdminLevel3),
+		AdminLevel4:      utils.NormalizePtr(payload.AdminLevel4),
+		Street:           utils.TrimSpacePtr(payload.Street),
+		PostalCode:       utils.TrimSpacePtr(payload.PostalCode),
+		Latitude:         payload.Latitude,
+		Longitude:        payload.Longitude,
+		OpeningHours:     payload.OpeningHours,
+	}
+
+	pharmacy, err := h.pu.UpdatePharmacy(ctxWithTracer, authID, &data)
+	if err != nil {
+		ctx.Error(err)
+		return
+	}
+
+	response := dto.RespUpdatePharmacy{
+		Updated: h.setPharmacyAsResponse(*pharmacy),
+	}
+
+	utils.SetResponse(ctx, "Pharmacy updated successfully.", response, http.StatusOK)
 }
 
 func (h *pharmacyHandler) ChangeLogo(ctx *gin.Context) {

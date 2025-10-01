@@ -12,6 +12,7 @@ func pharmacyRouters(h handlers.PharmacyHandler) func(*gin.RouterGroup) {
 
 		rg.POST("", middlewares.Authenticate(), middlewares.RequireVerified(), h.NewPharmacy)
 
+		rg.PATCH("/me", middlewares.Authenticate(), middlewares.RequireVerified(), h.UpdatePharmacy)
 		rg.PATCH("/me/logo", middlewares.Authenticate(), middlewares.RequireVerified(), h.ChangeLogo)
 	}
 }

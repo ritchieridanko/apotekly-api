@@ -36,14 +36,16 @@ const (
 	MsgInvalidCredentials string = "Invalid credentials."
 	MsgInvalidParams      string = "Invalid params."
 	MsgInvalidPayload     string = "Invalid payload."
+	MsgNoFieldsToUpdate   string = "No fields to update."
 	MsgPharmacyNotFound   string = "Pharmacy not found."
 	MsgUnauthenticated    string = "Unauthenticated."
 )
 
 // internal error logs
 var (
-	ErrDBAffectNoRows error = errors.New("query execution affected no rows")
-	ErrDBQueryNoRows  error = sql.ErrNoRows
-	ErrTokenExpired   error = jwt.ErrTokenExpired
-	ErrTokenMalformed error = jwt.ErrTokenMalformed
+	ErrDBAffectNoRows   error = errors.New("query execution affected no rows")
+	ErrDBQueryNoRows    error = sql.ErrNoRows
+	ErrNoFieldsProvided error = errors.New("no fields provided")
+	ErrTokenExpired     error = jwt.ErrTokenExpired
+	ErrTokenMalformed   error = jwt.ErrTokenMalformed
 )

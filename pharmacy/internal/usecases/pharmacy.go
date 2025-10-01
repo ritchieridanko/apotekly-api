@@ -17,11 +17,15 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
+// TODO
+// 1. Validate the hierarchy of administrative divisions, the postal code, and the coordinates
+
 const pharmacyErrorTracer string = "usecase.pharmacy"
 
 type PharmacyUsecase interface {
 	NewPharmacy(ctx context.Context, authID int64, data *entities.NewPharmacy, image multipart.File) (pharmacy *entities.Pharmacy, err error)
 	GetPharmacy(ctx context.Context, authID int64) (pharmacy *entities.Pharmacy, err error)
+	UpdatePharmacy(ctx context.Context, authID int64, data *entities.PharmacyChange) (pharmacy *entities.Pharmacy, err error)
 	ChangeLogo(ctx context.Context, authID int64, image multipart.File) (err error)
 }
 
@@ -60,6 +64,8 @@ func (u *pharmacyUsecase) NewPharmacy(ctx context.Context, authID int64, data *e
 				pictureURL = &imageURL
 			}
 		}
+
+		// TODO (1)
 
 		newData := entities.NewPharmacy{
 			PharmacyPublicID: pharmacyPublicID,
@@ -104,6 +110,15 @@ func (u *pharmacyUsecase) GetPharmacy(ctx context.Context, authID int64) (*entit
 	defer span.End()
 
 	return u.pr.GetByAuthID(ctx, authID)
+}
+
+func (u *pharmacyUsecase) UpdatePharmacy(ctx context.Context, authID int64, data *entities.PharmacyChange) (*entities.Pharmacy, error) {
+	ctx, span := otel.Tracer(pharmacyErrorTracer).Start(ctx, "UpdatePharmacy")
+	defer span.End()
+
+	// TODO (1)
+
+	return u.pr.UpdatePharmacy(ctx, authID, data)
 }
 
 func (u *pharmacyUsecase) ChangeLogo(ctx context.Context, authID int64, image multipart.File) error {

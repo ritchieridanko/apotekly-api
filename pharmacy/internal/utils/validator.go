@@ -73,6 +73,59 @@ func ValidateNewPharmacy(request dto.ReqNewPharmacy) (errString string) {
 	return ""
 }
 
+func ValidatePharmacyChange(request dto.ReqUpdatePharmacy) (errString string) {
+	if request.Name != nil && len(strings.TrimSpace(*request.Name)) == 0 {
+		return "Pharmacy name must not be empty."
+	}
+	if request.Name != nil && len(*request.Name) > nameMaxLength {
+		return fmt.Sprintf("Pharmacy name must not exceed %d characters.", nameMaxLength)
+	}
+	if request.LegalName != nil && len(*request.LegalName) > legalNameMaxLength {
+		return fmt.Sprintf("Legal name must not exceed %d characters.", legalNameMaxLength)
+	}
+	if request.Description != nil && len(*request.Description) > descriptionMaxLength {
+		return fmt.Sprintf("Description must not exceed %d characters.", descriptionMaxLength)
+	}
+	if request.LicenseNumber != nil && len(strings.TrimSpace(*request.LicenseNumber)) == 0 {
+		return "License number must not be empty."
+	}
+	if request.LicenseNumber != nil && len(*request.LicenseNumber) > licenseNumberMaxLength {
+		return fmt.Sprintf("License number must not exceed %d characters.", licenseNumberMaxLength)
+	}
+	if request.LicenseAuthority != nil && len(strings.TrimSpace(*request.LicenseAuthority)) == 0 {
+		return "License authority must not be empty."
+	}
+	if request.LicenseAuthority != nil && len(*request.LicenseAuthority) > nameMaxLength {
+		return fmt.Sprintf("License authority must not exceed %d characters.", nameMaxLength)
+	}
+	if request.LicenseExpiry != nil && request.LicenseExpiry.UTC().Before(time.Now().UTC()) {
+		return "License expiry is invalid."
+	}
+	if request.Email != nil && !emailRegex.MatchString(*request.Email) {
+		return "Email is invalid."
+	}
+	if request.Phone != nil && !phoneRegex.MatchString(*request.Phone) {
+		return "Phone is invalid."
+	}
+	if request.Website != nil {
+		if u, err := url.ParseRequestURI(*request.Website); err != nil || u.Scheme == "" || u.Host == "" {
+			return "Website is invalid."
+		}
+	}
+	if request.OpeningHours != nil {
+		if validateErr := ValidateOpeningHours(*request.OpeningHours); validateErr != "" {
+			return validateErr
+		}
+	}
+	if request.Latitude != nil && request.Longitude == nil {
+		return "Longitude not provided."
+	}
+	if request.Longitude != nil && request.Latitude == nil {
+		return "Latitude not provided."
+	}
+	return ""
+}
+
 func ValidateOpeningHours(data map[string][]string) (errString string) {
 	for key, value := range data {
 		if exists := slices.Contains(days, key); !exists {

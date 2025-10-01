@@ -55,3 +55,25 @@ type NewPharmacy struct {
 	Logo             *string
 	OpeningHours     types.OpeningHours
 }
+
+type PharmacyChange struct {
+	Name             *string
+	LegalName        *string
+	Description      *string
+	LicenseNumber    *string
+	LicenseAuthority *string
+	LicenseExpiry    *time.Time
+	Email            *string
+	Phone            *string
+	Website          *string
+	Country          *string
+	AdminLevel1      *string
+	AdminLevel2      *string
+	AdminLevel3      *string
+	AdminLevel4      *string
+	Street           *string
+	PostalCode       *string
+	Latitude         *float64
+	Longitude        *float64
+	OpeningHours     *types.OpeningHours
+}

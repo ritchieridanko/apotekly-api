@@ -59,3 +59,29 @@ type ReqNewPharmacy struct {
 type RespNewPharmacy struct {
 	Created RespPharmacy `json:"created"`
 }
+
+type ReqUpdatePharmacy struct {
+	Name             *string             `json:"name"`
+	LegalName        *string             `json:"legal_name"`
+	Description      *string             `json:"description"`
+	LicenseNumber    *string             `json:"license_number"`
+	LicenseAuthority *string             `json:"license_authority"`
+	LicenseExpiry    *time.Time          `json:"license_expiry"`
+	Email            *string             `json:"email"`
+	Phone            *string             `json:"phone"`
+	Website          *string             `json:"website"`
+	Country          *string             `json:"country"`
+	AdminLevel1      *string             `json:"admin_level_1"`
+	AdminLevel2      *string             `json:"admin_level_2"`
+	AdminLevel3      *string             `json:"admin_level_3"`
+	AdminLevel4      *string             `json:"admin_level_4"`
+	Street           *string             `json:"street"`
+	PostalCode       *string             `json:"postal_code"`
+	Latitude         *float64            `json:"latitude"`
+	Longitude        *float64            `json:"longitude"`
+	OpeningHours     *types.OpeningHours `json:"opening_hours"`
+}
+
+type RespUpdatePharmacy struct {
+	Updated RespPharmacy `json:"updated"`
+}
