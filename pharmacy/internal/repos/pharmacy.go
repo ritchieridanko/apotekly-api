@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
 	"github.com/ritchieridanko/apotekly-api/pharmacy/internal/ce"
 	"github.com/ritchieridanko/apotekly-api/pharmacy/internal/entities"
 	"github.com/ritchieridanko/apotekly-api/pharmacy/internal/services/db"
@@ -15,6 +16,8 @@ const pharmacyErrorTracer string = "repo.pharmacy"
 type PharmacyRepo interface {
 	Create(ctx context.Context, authID int64, data *entities.NewPharmacy) (pharmacy *entities.Pharmacy, err error)
 	GetByAuthID(ctx context.Context, authID int64) (pharmacy *entities.Pharmacy, err error)
+	GetPublicID(ctx context.Context, authID int64) (publicID uuid.UUID, err error)
+	UpdateLogo(ctx context.Context, authID int64, logo string) (err error)
 	HasPharmacy(ctx context.Context, authID int64) (exists bool, err error)
 }
 
@@ -110,6 +113,48 @@ func (r *pharmacyRepo) GetByAuthID(ctx context.Context, authID int64) (*entities
 	}
 
 	return &pharmacy, nil
+}
+
+func (r *pharmacyRepo) GetPublicID(ctx context.Context, authID int64) (uuid.UUID, error) {
+	ctx, span := otel.Tracer(pharmacyErrorTracer).Start(ctx, "GetPublicID")
+	defer span.End()
+
+	query := "SELECT pharmacy_public_id FROM pharmacies WHERE auth_id = $1 AND deleted_at IS NULL"
+	if r.database.IsWithinTx(ctx) {
+		query += " FOR UPDATE"
+	}
+
+	row := r.database.QueryRow(ctx, query, authID)
+
+	var publicID uuid.UUID
+	if err := row.Scan(&publicID); err != nil {
+		if errors.Is(err, ce.ErrDBQueryNoRows) {
+			return uuid.Nil, ce.NewError(span, ce.CodeAuthNotFound, ce.MsgInvalidCredentials, err)
+		}
+		return uuid.Nil, ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
+	}
+
+	return publicID, nil
+}
+
+func (r *pharmacyRepo) UpdateLogo(ctx context.Context, authID int64, logo string) error {
+	ctx, span := otel.Tracer(pharmacyErrorTracer).Start(ctx, "UpdateLogo")
+	defer span.End()
+
+	query := `
+		UPDATE pharmacies
+		SET logo = $1, updated_at = NOW()
+		WHERE auth_id = $2 AND deleted_at IS NULL
+	`
+
+	if err := r.database.Execute(ctx, query, logo, authID); err != nil {
+		if errors.Is(err, ce.ErrDBAffectNoRows) {
+			return ce.NewError(span, ce.CodeAuthNotFound, ce.MsgInvalidCredentials, err)
+		}
+		return ce.NewError(span, ce.CodeDBQueryExecution, ce.MsgInternalServer, err)
+	}
+
+	return nil
 }
 
 func (r *pharmacyRepo) HasPharmacy(ctx context.Context, authID int64) (bool, error) {

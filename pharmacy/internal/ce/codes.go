@@ -11,8 +11,9 @@ type internalErrorCode string
 
 // internal error codes (for logs/debugging)
 const (
-	CodeAuthNotVerified      internalErrorCode = "AUTH_NOT_VERIFIED_ERROR"
 	CodeAuthAudienceNotFound internalErrorCode = "AUTH_AUDIENCE_NOT_FOUND_ERROR"
+	CodeAuthNotFound         internalErrorCode = "AUTH_NOT_FOUND_ERROR"
+	CodeAuthNotVerified      internalErrorCode = "AUTH_NOT_VERIFIED_ERROR"
 	CodeAuthTokenExpired     internalErrorCode = "AUTH_TOKEN_EXPIRED_ERROR"
 	CodeAuthTokenMalformed   internalErrorCode = "AUTH_TOKEN_MALFORMED_ERROR"
 	CodeAuthTokenParsing     internalErrorCode = "AUTH_TOKEN_PARSING_ERROR"
@@ -31,11 +32,12 @@ const (
 
 // external error messages (for end-users)
 const (
-	MsgInternalServer   string = "Internal server error."
-	MsgInvalidParams    string = "Invalid params."
-	MsgInvalidPayload   string = "Invalid payload."
-	MsgPharmacyNotFound string = "Pharmacy not found."
-	MsgUnauthenticated  string = "Unauthenticated."
+	MsgInternalServer     string = "Internal server error."
+	MsgInvalidCredentials string = "Invalid credentials."
+	MsgInvalidParams      string = "Invalid params."
+	MsgInvalidPayload     string = "Invalid payload."
+	MsgPharmacyNotFound   string = "Pharmacy not found."
+	MsgUnauthenticated    string = "Unauthenticated."
 )
 
 // internal error logs

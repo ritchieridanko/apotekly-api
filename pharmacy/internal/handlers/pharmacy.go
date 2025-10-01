@@ -24,6 +24,7 @@ const pharmacyErrorTracer string = "handler.pharmacy"
 type PharmacyHandler interface {
 	NewPharmacy(ctx *gin.Context)
 	GetPharmacy(ctx *gin.Context)
+	ChangeLogo(ctx *gin.Context)
 }
 
 type pharmacyHandler struct {
@@ -134,6 +135,50 @@ func (h *pharmacyHandler) GetPharmacy(ctx *gin.Context) {
 	response := h.setPharmacyAsResponse(*pharmacy)
 
 	utils.SetResponse(ctx, "ok", response, http.StatusOK)
+}
+
+func (h *pharmacyHandler) ChangeLogo(ctx *gin.Context) {
+	ctxWithTracer, span := otel.Tracer(pharmacyErrorTracer).Start(ctx.Request.Context(), "ChangeLogo")
+	defer span.End()
+
+	// limit request body size to max size
+	maxSize := constants.SizeMB * config.StorageGetImageMaxSize()
+	ctx.Request.Body = http.MaxBytesReader(ctx.Writer, ctx.Request.Body, maxSize)
+
+	authID, err := utils.ContextGetAuthID(ctxWithTracer)
+	if err != nil {
+		err := ce.NewError(span, ce.CodeContextValueNotFound, ce.MsgInternalServer, err)
+		ctx.Error(err)
+		return
+	}
+
+	file, err := ctx.FormFile("image")
+	if err != nil {
+		err := ce.NewError(span, ce.CodeInvalidPayload, ce.MsgInvalidPayload, err)
+		ctx.Error(err)
+		return
+	}
+
+	image, err := file.Open()
+	if err != nil {
+		err := ce.NewError(span, ce.CodeRequestFile, ce.MsgInternalServer, err)
+		ctx.Error(err)
+		return
+	}
+	defer image.Close()
+
+	if file.Size > maxSize {
+		err := ce.NewError(span, ce.CodeInvalidPayload, "File size exceeds limit.", errors.New("file size exceeds maximum size"))
+		ctx.Error(err)
+		return
+	}
+
+	if err := h.pu.ChangeLogo(ctxWithTracer, authID, image); err != nil {
+		ctx.Error(err)
+		return
+	}
+
+	utils.SetResponse(ctx, "Logo changed.", nil, http.StatusOK)
 }
 
 func (h *pharmacyHandler) setPharmacyAsResponse(pharmacy entities.Pharmacy) dto.RespPharmacy {
