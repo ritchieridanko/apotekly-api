@@ -96,7 +96,7 @@ func (h *userHandler) NewUser(ctx *gin.Context) {
 
 	response := dto.RespNewUser{
 		Created: dto.RespUser{
-			UserID:         user.UserID,
+			ID:             user.UserID,
 			Name:           user.Name,
 			Bio:            user.Bio,
 			Sex:            user.Sex,
@@ -127,7 +127,7 @@ func (h *userHandler) GetUser(ctx *gin.Context) {
 	}
 
 	response := dto.RespUser{
-		UserID:         user.UserID,
+		ID:             user.UserID,
 		Name:           user.Name,
 		Bio:            user.Bio,
 		Sex:            user.Sex,
@@ -179,7 +179,7 @@ func (h *userHandler) UpdateUser(ctx *gin.Context) {
 
 	response := dto.RespUpdateUser{
 		Updated: dto.RespUser{
-			UserID:         user.UserID,
+			ID:             user.UserID,
 			Name:           user.Name,
 			Bio:            user.Bio,
 			Sex:            user.Sex,

@@ -54,7 +54,7 @@ func (u *userUsecase) NewUser(ctx context.Context, authID int64, data *entities.
 		var pictureURL *string
 		userID := utils.GenerateRandomUUID()
 		if image != nil {
-			imageURL, err := u.uploadImage(ctx, image, userID.String(), "pp", "users", true)
+			imageURL, err := u.uploadImage(ctx, image, userID.String(), "pp", "users/profile_pictures", true)
 			if err != nil {
 				log.Println("WARNING -> failed to upload image:", err.Error())
 			} else {
@@ -109,7 +109,7 @@ func (u *userUsecase) ChangeProfilePicture(ctx context.Context, authID int64, im
 		return err
 	}
 
-	imageURL, err := u.uploadImage(ctx, image, userID.String(), "pp", "users", true)
+	imageURL, err := u.uploadImage(ctx, image, userID.String(), "pp", "users/profile_pictures", true)
 	if err != nil {
 		return err
 	}
