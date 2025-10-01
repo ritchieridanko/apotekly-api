@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/ritchieridanko/apotekly-api/pharmacy/internal/constants"
+	"github.com/ritchieridanko/apotekly-api/pharmacy/internal/types"
 )
 
 type Pharmacy struct {
@@ -28,7 +28,7 @@ type Pharmacy struct {
 	Latitude         float64
 	Longitude        float64
 	Logo             *string
-	OpeningHours     constants.OpeningHours
+	OpeningHours     types.OpeningHours
 	Status           string
 }
 
@@ -53,5 +53,5 @@ type NewPharmacy struct {
 	Latitude         float64
 	Longitude        float64
 	Logo             *string
-	OpeningHours     constants.OpeningHours
+	OpeningHours     types.OpeningHours
 }

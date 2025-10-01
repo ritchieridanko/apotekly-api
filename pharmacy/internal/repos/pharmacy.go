@@ -32,7 +32,7 @@ func (r *pharmacyRepo) Create(ctx context.Context, authID int64, data *entities.
 	query := `
 		INSERT INTO
 			pharmacies (
-				auth_id, pharmacy_public_id, name, legal_name, description, license_number
+				auth_id, pharmacy_public_id, name, legal_name, description, license_number,
 				license_authority, license_expiry, email, phone, website, country,
 				admin_level_1, admin_level_2, admin_level_3, admin_level_4, street,
 				postal_code, latitude, longitude, location, logo, opening_hours

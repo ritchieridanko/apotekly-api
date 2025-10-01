@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ritchieridanko/apotekly-api/pharmacy/internal/constants"
 	"github.com/ritchieridanko/apotekly-api/pharmacy/internal/dto"
 )
 
@@ -74,7 +73,7 @@ func ValidateNewPharmacy(request dto.ReqNewPharmacy) (errString string) {
 	return ""
 }
 
-func ValidateOpeningHours(data constants.OpeningHours) (errString string) {
+func ValidateOpeningHours(data map[string][]string) (errString string) {
 	for key, value := range data {
 		if exists := slices.Contains(days, key); !exists {
 			return fmt.Sprintf("Opening day %s is invalid.", key)
