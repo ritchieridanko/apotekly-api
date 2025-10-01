@@ -11,5 +11,9 @@ func Initialize() {
 		log.Fatalln("FATAL -> failed to load .env file:", err.Error())
 	}
 
+	loadAppConfig()
 	loadDBConfig()
+	loadServerConfig()
+	loadStorageConfig()
+	loadTracerConfig()
 }

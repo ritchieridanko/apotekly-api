@@ -32,9 +32,7 @@ CREATE TABLE pharmacies(
     logo VARCHAR,
 
     -- Business Information
-    opening_hours JSONB, -- e.g., { "mon": ["08:00-20:00"], "sun": [] }
-    delivery_options JSONB, -- e.g., { "same_day": ["Gojek", "Grab"] }
-    payment_methods JSONB, -- supported payment methods at pharmacy level
+    opening_hours JSONB NOT NULL, -- e.g., { "mon": ["08:00-20:00"], "sun": [] }
 
     -- Operational Status
     status VARCHAR DEFAULT 'ACTIVE', -- ACTIVE, SUSPENDED, CLOSE
