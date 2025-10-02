@@ -34,6 +34,8 @@ type AuthUsecase interface {
 	IsEmailRegistered(ctx context.Context, email string) (exists bool, err error)
 	IsResetTokenValid(ctx context.Context, token string) (exists bool, err error)
 	RefreshSession(ctx context.Context, sessionToken string) (token *entities.AuthToken, err error)
+
+	RegisterAsPharmacy(ctx context.Context, data *entities.NewAuth, request *entities.NewRequest) (token *entities.AuthToken, err error)
 }
 
 type authUsecase struct {
@@ -65,7 +67,7 @@ func (u *authUsecase) Register(ctx context.Context, data *entities.NewAuth, requ
 	var authID int64
 	var token entities.AuthToken
 	err := u.tx.WithTx(ctx, func(ctx context.Context) error {
-		normalizedEmail = utils.NormalizeString(data.Email)
+		normalizedEmail = utils.Normalize(data.Email)
 		exists, err := u.ar.IsEmailRegistered(ctx, normalizedEmail)
 		if err != nil {
 			return err
@@ -141,7 +143,7 @@ func (u *authUsecase) Login(ctx context.Context, data *entities.GetAuth, request
 	sessionDuration := time.Duration(config.AuthGetSessionDuration()) * time.Minute
 	lockDuration := time.Duration(config.AuthGetLockDuration()) * time.Minute
 
-	normalizedEmail := utils.NormalizeString(data.Email)
+	normalizedEmail := utils.Normalize(data.Email)
 	auth, err := u.ar.GetByEmail(ctx, normalizedEmail)
 	if err != nil {
 		return nil, err
@@ -222,7 +224,7 @@ func (u *authUsecase) ChangeEmail(ctx context.Context, authID int64, newEmail st
 		return ce.NewError(span, ce.CodeOAuthEmailChange, "OAuth account cannot change email.", errors.New("email change with oauth account"))
 	}
 
-	normalizedEmail := utils.NormalizeString(newEmail)
+	normalizedEmail := utils.Normalize(newEmail)
 	exists, err := u.ar.IsEmailRegistered(ctx, normalizedEmail)
 	if err != nil {
 		return err
@@ -282,7 +284,7 @@ func (u *authUsecase) ForgotPassword(ctx context.Context, email string) error {
 	ctx, span := otel.Tracer(authErrorTracer).Start(ctx, "ForgotPassword")
 	defer span.End()
 
-	normalizedEmail := utils.NormalizeString(email)
+	normalizedEmail := utils.Normalize(email)
 	auth, err := u.ar.GetByEmail(ctx, normalizedEmail)
 	if err != nil {
 		return err
@@ -356,7 +358,7 @@ func (u *authUsecase) IsEmailRegistered(ctx context.Context, email string) (bool
 	ctx, span := otel.Tracer(authErrorTracer).Start(ctx, "IsEmailRegistered")
 	defer span.End()
 
-	normalizedEmail := utils.NormalizeString(email)
+	normalizedEmail := utils.Normalize(email)
 	return u.ar.IsEmailRegistered(ctx, normalizedEmail)
 }
 

@@ -60,7 +60,7 @@ func (u *oAuthUsecase) Authenticate(ctx context.Context, data *entities.OAuth, r
 	var authID int64
 	var token entities.AuthToken
 	err := u.tx.WithTx(ctx, func(ctx context.Context) (err error) {
-		normalizedEmail = utils.NormalizeString(data.Email)
+		normalizedEmail = utils.Normalize(data.Email)
 		exists, auth, err := u.ar.GetForOAuth(ctx, normalizedEmail)
 		if err != nil {
 			return err

@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func NormalizeString(value string) (normalizedString string) {
+func Normalize(value string) (result string) {
 	return strings.ToLower(strings.TrimSpace(value))
 }
 

@@ -31,6 +31,8 @@ type AuthHandler interface {
 	IsEmailRegistered(ctx *gin.Context)
 	IsResetTokenValid(ctx *gin.Context)
 	RefreshSession(ctx *gin.Context)
+
+	RegisterAsPharmacy(ctx *gin.Context)
 }
 
 type authHandler struct {

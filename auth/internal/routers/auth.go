@@ -13,6 +13,7 @@ func authRouters(h handlers.AuthHandler) func(*gin.RouterGroup) {
 		rg.GET("/change-email/confirm", h.ConfirmEmailChange)
 
 		rg.POST("/register", h.Register)
+		rg.POST("/register/pharmacy", h.RegisterAsPharmacy)
 		rg.POST("/login", h.Login)
 		rg.POST("/logout", middlewares.Authenticate(), h.Logout)
 		rg.POST("/refresh-session", h.RefreshSession)
