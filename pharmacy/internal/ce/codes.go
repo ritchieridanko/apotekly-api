@@ -28,6 +28,7 @@ const (
 	CodeInvalidPayload       internalErrorCode = "INVALID_PAYLOAD_ERROR"
 	CodePharmacyNotFound     internalErrorCode = "PHARMACY_NOT_FOUND_ERROR"
 	CodeRequestFile          internalErrorCode = "REQUEST_FILE_ERROR"
+	CodeRoleUnauthorized     internalErrorCode = "ROLE_UNAUTHORIZED_ERROR"
 )
 
 // external error messages (for end-users)
