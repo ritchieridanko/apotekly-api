@@ -40,7 +40,8 @@ func (e *Error) ToExternalErrorCode() (externalCode int) {
 		CodeAuthNotFound,
 		CodeAuthTokenExpired,
 		CodeAuthTokenMalformed,
-		CodeAuthUnauthenticated:
+		CodeAuthUnauthenticated,
+		CodeRoleUnauthorized:
 		return http.StatusUnauthorized
 	case CodeAuthNotVerified:
 		return http.StatusForbidden

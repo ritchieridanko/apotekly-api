@@ -90,3 +90,21 @@ func RequireVerified() gin.HandlerFunc {
 		ctx.Next()
 	}
 }
+
+func Authorize() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		ctxWithTracer, span := otel.Tracer(authErrorTracer).Start(ctx.Request.Context(), "Authorize")
+		defer span.End()
+
+		value := ctxWithTracer.Value(constants.CtxKeyRoleID)
+		roleID, ok := value.(int16)
+		if !ok || roleID != constants.RoleCustomer {
+			err := ce.NewError(span, ce.CodeRoleUnauthorized, "Resource unauthorized.", errors.New("role unauthorized"))
+			ctx.Error(err)
+			ctx.Abort()
+			return
+		}
+
+		ctx.Next()
+	}
+}

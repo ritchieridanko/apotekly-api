@@ -28,6 +28,7 @@ const (
 	CodeInvalidParams        internalErrorCode = "INVALID_PARAMS_ERROR"
 	CodeInvalidPayload       internalErrorCode = "INVALID_PAYLOAD_ERROR"
 	CodeRequestFile          internalErrorCode = "REQUEST_FILE_ERROR"
+	CodeRoleUnauthorized     internalErrorCode = "ROLE_UNAUTHORIZED_ERROR"
 	CodeUserNotFound         internalErrorCode = "USER_NOT_FOUND_ERROR"
 )
 
