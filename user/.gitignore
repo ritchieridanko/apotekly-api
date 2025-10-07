@@ -1,7 +1,12 @@
+# Config
 .env
+config.yaml
+
+# TODO file
+TODO.md
 
 # Binaries
-/user/cmd/server/server
+/user/cmd/app/app
 /user/cmd/migrate/migrate
 
 # IDE/editor files

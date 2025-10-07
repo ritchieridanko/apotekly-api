@@ -1,17 +1,17 @@
 # === Variables ===
 BINARY_DIR := bin
-SERVER_BIN := $(BINARY_DIR)/server
+APP_BIN := $(BINARY_DIR)/app
 MIGRATE_BIN := $(BINARY_DIR)/migrate
 
 # === Default Target ===
 help:
 	@echo "Available commands:"
-	@echo "  make dev-up				Create the database, apply all migrations, and run the server"
-	@echo "  make dev-reset			Drop and create new the database, apply all migrations, and run the server"
-	@echo "  make build-and-run			Build and run the migrate and server binaries"
-	@echo "  make run-server			Run the server locally"
-	@echo "  make build-server			Build the server binary into $(SERVER_BIN)"
-	@echo "  make build-and-run-server		Build and run the server binary"
+	@echo "  make dev-up				Create the database, apply all migrations, and run the app"
+	@echo "  make dev-reset			Drop and create new database, apply all migrations, and run the app"
+	@echo "  make build-and-run			Build and run the migrate and app binaries"
+	@echo "  make run-app				Run the app"
+	@echo "  make build-app			Build the app binary into $(APP_BIN)"
+	@echo "  make build-and-run-app		Build and run the app binary"
 	@echo "  make setup-db				Create the database"
 	@echo "  make drop-db				Drop the database"
 	@echo "  make migrate-up			Apply all migrations"
@@ -20,16 +20,16 @@ help:
 	@echo "  make build-migrate			Build the migrate binary into $(MIGRATE_BIN)"
 	@echo "  make build-and-run-migrate		Build and run the migrate binary"
 
-# === Server Commands ===
-run-server:
-	go run cmd/server/main.go
+# === App Commands ===
+run-app:
+	go run cmd/app/main.go
 
-build-server:
-	go build -o $(SERVER_BIN) cmd/server/main.go
+build-app:
+	go build -o $(APP_BIN) cmd/app/main.go
 
-build-and-run-server:
-	make build-server
-	./$(SERVER_BIN)
+build-and-run-app:
+	make build-app
+	./$(APP_BIN)
 
 # === DB Commands ===
 setup-db:
@@ -60,16 +60,16 @@ build-and-run-migrate:
 dev-up:
 	make setup-db
 	make migrate-up
-	make run-server
+	make run-app
 
 dev-reset:
 	make drop-db
 	make setup-db
 	make migrate-up
-	make run-server
+	make run-app
 
 build-and-run:
 	make drop-db
 	make setup-db
 	make build-and-run-migrate
-	make build-and-run-server
+	make build-and-run-app

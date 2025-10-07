@@ -1,89 +1,86 @@
 package usecases
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"io"
+	"fmt"
 	"log"
 	"mime/multipart"
 
-	"github.com/ritchieridanko/apotekly-api/user/internal/ce"
 	"github.com/ritchieridanko/apotekly-api/user/internal/entities"
-	"github.com/ritchieridanko/apotekly-api/user/internal/repos"
-	"github.com/ritchieridanko/apotekly-api/user/internal/services/db"
-	"github.com/ritchieridanko/apotekly-api/user/internal/services/storage"
-	"github.com/ritchieridanko/apotekly-api/user/internal/utils"
+	"github.com/ritchieridanko/apotekly-api/user/internal/repositories"
+	"github.com/ritchieridanko/apotekly-api/user/internal/service/database"
+	"github.com/ritchieridanko/apotekly-api/user/internal/service/storage"
+	"github.com/ritchieridanko/apotekly-api/user/internal/shared/ce"
+	"github.com/ritchieridanko/apotekly-api/user/internal/shared/utils"
 	"go.opentelemetry.io/otel"
 )
 
 const userErrorTracer string = "usecase.user"
 
 type UserUsecase interface {
-	NewUser(ctx context.Context, authID int64, data *entities.NewUser, image multipart.File) (user *entities.User, err error)
+	CreateUser(ctx context.Context, authID int64, data *entities.CreateUser, image multipart.File) (createdUser *entities.User, err error)
 	GetUser(ctx context.Context, authID int64) (user *entities.User, err error)
-	UpdateUser(ctx context.Context, authID int64, data *entities.UserChange) (user *entities.User, err error)
-	ChangeProfilePicture(ctx context.Context, authID int64, image multipart.File) (err error)
+	UpdateUser(ctx context.Context, authID int64, data *entities.UpdateUser) (updatedUser *entities.User, err error)
+	ChangeProfilePicture(ctx context.Context, authID int64, image multipart.File) (user *entities.User, err error)
 }
 
 type userUsecase struct {
-	ur      repos.UserRepo
-	tx      db.TxManager
-	storage storage.StorageService
+	ur         repositories.UserRepository
+	transactor *database.Transactor
+	storage    *storage.Storage
 }
 
-func NewUserUsecase(ur repos.UserRepo, tx db.TxManager, storage storage.StorageService) UserUsecase {
-	return &userUsecase{ur, tx, storage}
+func NewUserUsecase(
+	ur repositories.UserRepository,
+	transactor *database.Transactor,
+	storage *storage.Storage,
+) UserUsecase {
+	return &userUsecase{ur, transactor, storage}
 }
 
-func (u *userUsecase) NewUser(ctx context.Context, authID int64, data *entities.NewUser, image multipart.File) (*entities.User, error) {
-	ctx, span := otel.Tracer(userErrorTracer).Start(ctx, "NewUser")
+func (u *userUsecase) CreateUser(ctx context.Context, authID int64, data *entities.CreateUser, image multipart.File) (*entities.User, error) {
+	ctx, span := otel.Tracer(userErrorTracer).Start(ctx, "CreateUser")
 	defer span.End()
 
 	var user *entities.User
-	err := u.tx.WithTx(ctx, func(ctx context.Context) (err error) {
-		exists, err := u.ur.HasUser(ctx, authID)
+	err := u.transactor.WithTx(ctx, func(ctx context.Context) (err error) {
+		exists, err := u.ur.Exists(ctx, authID)
 		if err != nil {
 			return err
 		}
 		if exists {
-			return ce.NewError(span, ce.CodeDBDuplicateData, "User already exists", errors.New("auth id conflict"))
+			err := fmt.Errorf("failed to create user: %w", errors.New("conflict auth id"))
+			return ce.NewError(span, ce.CodeDBDuplicateData, "User already exists", err)
 		}
 
 		// upload image if exists
-		var pictureURL *string
-		userID := utils.GenerateRandomUUID()
+		var profilePicture *string
+		userID := utils.NewUUID()
 		if image != nil {
 			imageURL, err := u.uploadImage(ctx, image, userID.String(), "pp", "users/profile_pictures", true)
 			if err != nil {
-				log.Println("WARNING -> failed to upload image:", err.Error())
+				log.Println("WARNING -> ", err.Error())
 			} else {
-				pictureURL = &imageURL
+				profilePicture = &imageURL
 			}
 		}
 
-		newData := entities.NewUser{
-			UserID:         userID,
+		newData := entities.CreateUser{
+			ID:             userID,
 			Name:           data.Name,
 			Bio:            data.Bio,
 			Sex:            data.Sex,
 			Birthdate:      data.Birthdate,
 			Phone:          data.Phone,
-			ProfilePicture: pictureURL,
+			ProfilePicture: profilePicture,
 		}
 
 		user, err = u.ur.Create(ctx, authID, &newData)
-		if err != nil {
-			return err
-		}
-
-		return nil
+		return err
 	})
-	if err != nil {
-		return nil, err
-	}
 
-	return user, nil
+	return user, err
 }
 
 func (u *userUsecase) GetUser(ctx context.Context, authID int64) (*entities.User, error) {
@@ -93,54 +90,46 @@ func (u *userUsecase) GetUser(ctx context.Context, authID int64) (*entities.User
 	return u.ur.GetByAuthID(ctx, authID)
 }
 
-func (u *userUsecase) UpdateUser(ctx context.Context, authID int64, data *entities.UserChange) (*entities.User, error) {
+func (u *userUsecase) UpdateUser(ctx context.Context, authID int64, data *entities.UpdateUser) (*entities.User, error) {
 	ctx, span := otel.Tracer(userErrorTracer).Start(ctx, "UpdateUser")
 	defer span.End()
 
-	return u.ur.UpdateUser(ctx, authID, data)
+	return u.ur.Update(ctx, authID, data)
 }
 
-func (u *userUsecase) ChangeProfilePicture(ctx context.Context, authID int64, image multipart.File) error {
+func (u *userUsecase) ChangeProfilePicture(ctx context.Context, authID int64, image multipart.File) (*entities.User, error) {
 	ctx, span := otel.Tracer(userErrorTracer).Start(ctx, "ChangeProfilePicture")
 	defer span.End()
 
 	userID, err := u.ur.GetUserID(ctx, authID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	imageURL, err := u.uploadImage(ctx, image, userID.String(), "pp", "users/profile_pictures", true)
+	profilePicture, err := u.uploadImage(ctx, image, userID.String(), "pp", "users/profile_pictures", true)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return u.ur.UpdateProfilePicture(ctx, authID, imageURL)
+	return u.ur.UpdateProfilePicture(ctx, authID, profilePicture)
 }
 
-func (u *userUsecase) uploadImage(ctx context.Context, image multipart.File, publicID, prefix, folder string, overwrite bool) (imageURL string, err error) {
+func (u *userUsecase) uploadImage(ctx context.Context, image multipart.File, publicID, prefix, folder string, overwrite bool) (string, error) {
 	ctx, span := otel.Tracer(userErrorTracer).Start(ctx, "uploadImage")
 	defer span.End()
 
-	imageBuf, err := io.ReadAll(image)
-	if err != nil {
-		return "", ce.NewError(span, ce.CodeFileBuffer, ce.MsgInternalServer, err)
-	}
-
-	if err := utils.ValidateImageFile(imageBuf); err != nil {
-		return "", ce.NewError(span, ce.CodeInvalidPayload, "Invalid file type.", err)
-	}
-
-	data := entities.NewUpload{
-		File:           bytes.NewReader(imageBuf),
-		PublicID:       publicID,
-		PublicIDPrefix: prefix,
-		Folder:         folder,
-		Overwrite:      &overwrite,
+	data := entities.UploadParams{
+		File:      image,
+		PublicID:  publicID,
+		Prefix:    prefix,
+		Folder:    folder,
+		Overwrite: &overwrite,
 	}
 
 	result, err := u.storage.Upload(ctx, &data)
 	if err != nil {
-		return "", ce.NewError(span, ce.CodeFileUploadFailed, ce.MsgInternalServer, err)
+		wErr := fmt.Errorf("failed to upload image: %w", err)
+		return "", ce.NewError(span, ce.CodeFileUploadFailed, ce.MsgInternalServer, wErr)
 	}
 
 	return result.SecureURL, nil

@@ -1,0 +1,38 @@
+app:
+  name: "user-service"
+
+server:
+  host: "localhost"
+  port: 9001
+  read_timeout: "5s"
+  write_timeout: "5s"
+  shutdown_timeout: "10s"
+
+jwt:
+  secret: "${JWT_SECRET}"
+
+database:
+  host: "localhost"
+  port: 5432
+  user: "${DATABASE_USER}"
+  pass: "${DATABASE_PASS}"
+  name: "apotekly_user_db"
+  ssl_mode: "disable"
+  max_open_conns: 25
+  max_idle_conns: 5
+  conn_max_lifetime: "5m"
+
+storage:
+  provider: "cloudinary"
+  bucket: "${STORAGE_BUCKET}"
+  api_key: "${STORAGE_API_KEY}"
+  api_secret: "${STORAGE_API_SECRET}"
+
+image: # adjust as needed
+  max_size_bytes: 1048576 # 1MB
+  allowed_types:
+    - "image/png"
+    - "image/jpeg"
+
+tracer:
+  endpoint: "http://localhost:4318"

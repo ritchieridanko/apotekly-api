@@ -1,11 +1,11 @@
 package entities
 
-import "io"
+import "mime/multipart"
 
-type NewUpload struct {
-	File           io.Reader
-	PublicID       string
-	PublicIDPrefix string
-	Folder         string
-	Overwrite      *bool
+type UploadParams struct {
+	File      multipart.File
+	PublicID  string
+	Prefix    string
+	Folder    string
+	Overwrite *bool
 }

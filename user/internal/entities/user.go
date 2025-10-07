@@ -7,29 +7,31 @@ import (
 )
 
 type User struct {
-	UserID         uuid.UUID
+	ID             uuid.UUID
 	Name           string
 	Bio            *string
-	Sex            *int16
+	Sex            *string
+	Birthdate      *time.Time
+	Phone          *string
+	ProfilePicture *string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type CreateUser struct {
+	ID             uuid.UUID
+	Name           string
+	Bio            *string
+	Sex            *string
 	Birthdate      *time.Time
 	Phone          *string
 	ProfilePicture *string
 }
 
-type NewUser struct {
-	UserID         uuid.UUID
-	Name           string
-	Bio            *string
-	Sex            *int16
-	Birthdate      *time.Time
-	Phone          *string
-	ProfilePicture *string
-}
-
-type UserChange struct {
+type UpdateUser struct {
 	Name      *string
 	Bio       *string
-	Sex       *int16
+	Sex       *string
 	Birthdate *time.Time
 	Phone     *string
 }
