@@ -27,7 +27,7 @@ func (c *Cache) Evaluate(ctx context.Context, hashKey, script string, keys []str
 		}
 
 		// set indefinitely
-		if err := c.Set(ctx, hashKey, hash, 0); err != nil {
+		if err := c.Set(ctx, hashKey, hash, -1); err != nil {
 			return nil, err
 		}
 	}
@@ -54,7 +54,13 @@ func (c *Cache) Evaluate(ctx context.Context, hashKey, script string, keys []str
 func (c *Cache) Set(ctx context.Context, key string, value interface{}, duration time.Duration) error {
 	var lastErr error
 	for attempt := 0; attempt <= c.maxRetries; attempt++ {
-		err := c.cache.Set(ctx, key, value, duration).Err()
+		var err error
+		if duration <= 0 {
+			err = c.cache.Set(ctx, key, value, 0).Err()
+		} else {
+			err = c.cache.Set(ctx, key, value, duration).Err()
+		}
+
 		if err == nil {
 			return nil
 		}

@@ -11,7 +11,6 @@ import (
 	"github.com/ritchieridanko/apotekly-api/auth/internal/app/usecases"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/entities"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/interfaces/http/dto"
-	"github.com/ritchieridanko/apotekly-api/auth/internal/interfaces/http/validator"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/services"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/shared/ce"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/shared/constants"
@@ -24,14 +23,13 @@ import (
 const authErrorTracer string = "handler.auth"
 
 type AuthHandler struct {
-	au        usecases.AuthUsecase
-	validator *validator.Validator
-	cookie    *services.CookieService
-	cfg       *configs.Config
+	au     usecases.AuthUsecase
+	cookie *services.CookieService
+	cfg    *configs.Config
 }
 
-func NewAuthHandler(au usecases.AuthUsecase, validator *validator.Validator, cookie *services.CookieService, cfg *configs.Config) *AuthHandler {
-	return &AuthHandler{au, validator, cookie, cfg}
+func NewAuthHandler(au usecases.AuthUsecase, cookie *services.CookieService, cfg *configs.Config) *AuthHandler {
+	return &AuthHandler{au, cookie, cfg}
 }
 
 func (h *AuthHandler) Register(ctx *gin.Context) {
@@ -42,11 +40,6 @@ func (h *AuthHandler) Register(ctx *gin.Context) {
 	if err := ctx.ShouldBindJSON(&payload); err != nil {
 		wErr := fmt.Errorf("failed to register: %w", err)
 		ctx.Error(ce.NewError(span, ce.CodeInvalidPayload, ce.MsgInvalidPayload, wErr))
-		return
-	}
-	if externalErr, internalErr := h.validator.Validate(payload); internalErr != nil {
-		err := fmt.Errorf("failed to register: %w", internalErr)
-		ctx.Error(ce.NewError(span, ce.CodeInvalidPayload, externalErr, err))
 		return
 	}
 
@@ -82,11 +75,6 @@ func (h *AuthHandler) Login(ctx *gin.Context) {
 	if err := ctx.ShouldBindJSON(&payload); err != nil {
 		wErr := fmt.Errorf("failed to login: %w", err)
 		ctx.Error(ce.NewError(span, ce.CodeInvalidPayload, ce.MsgInvalidPayload, wErr))
-		return
-	}
-	if externalErr, internalErr := h.validator.Validate(payload); internalErr != nil {
-		err := fmt.Errorf("failed to login: %w", internalErr)
-		ctx.Error(ce.NewError(span, ce.CodeInvalidPayload, externalErr, err))
 		return
 	}
 
@@ -159,11 +147,6 @@ func (h *AuthHandler) ChangeEmail(ctx *gin.Context) {
 	if err := ctx.ShouldBindJSON(&payload); err != nil {
 		wErr := fmt.Errorf("failed to change email: %w", err)
 		ctx.Error(ce.NewError(span, ce.CodeInvalidPayload, ce.MsgInvalidPayload, wErr))
-		return
-	}
-	if externalErr, internalErr := h.validator.Validate(payload); internalErr != nil {
-		err := fmt.Errorf("failed to change email: %w", internalErr)
-		ctx.Error(ce.NewError(span, ce.CodeInvalidPayload, externalErr, err))
 		return
 	}
 
@@ -263,11 +246,6 @@ func (h *AuthHandler) ForgotPassword(ctx *gin.Context) {
 	if err := ctx.ShouldBindJSON(&payload); err != nil {
 		wErr := fmt.Errorf("failed to forgot password: %w", err)
 		ctx.Error(ce.NewError(span, ce.CodeInvalidPayload, ce.MsgInvalidPayload, wErr))
-		return
-	}
-	if externalErr, internalErr := h.validator.Validate(payload); internalErr != nil {
-		err := fmt.Errorf("failed to forgot password: %w", internalErr)
-		ctx.Error(ce.NewError(span, ce.CodeInvalidPayload, externalErr, err))
 		return
 	}
 

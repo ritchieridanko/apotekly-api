@@ -10,6 +10,7 @@ import (
 	"github.com/ritchieridanko/apotekly-api/auth/configs"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/infrastructure"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/interfaces/di"
+	"github.com/ritchieridanko/apotekly-api/auth/internal/interfaces/http/validator"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/servers"
 )
 
@@ -26,6 +27,10 @@ func main() {
 	defer infra.Close()
 
 	c := di.NewContainer(cfg, infra)
+
+	if err := validator.RegisterValidators(); err != nil {
+		log.Fatalln("FATAL -> ", err.Error())
+	}
 
 	s := servers.NewHTTPServer(cfg, c.Router().Engine())
 	go func() {

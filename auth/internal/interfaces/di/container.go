@@ -9,7 +9,6 @@ import (
 	"github.com/ritchieridanko/apotekly-api/auth/internal/interfaces/http/handlers"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/interfaces/http/middlewares"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/interfaces/http/router"
-	"github.com/ritchieridanko/apotekly-api/auth/internal/interfaces/http/validator"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/services"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/services/cache"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/services/database"
@@ -40,9 +39,7 @@ func NewContainer(cfg *configs.Config, infra *infrastructure.Infrastructure) *Co
 	au := usecases.NewAuthUsecase(ar, ac, su, tx, bcrypt, jwt, cfg)
 	oau := usecases.NewOAuthUsecase(oar, ar, oac, ac, su, tx, jwt, cfg)
 
-	v := validator.NewValidator()
-
-	ah := handlers.NewAuthHandler(au, v, cookie, cfg)
+	ah := handlers.NewAuthHandler(au, cookie, cfg)
 	oah := handlers.NewOAuthHandler(oau, au, oauth.Google(), oauth.Microsoft(), cookie, cfg)
 
 	am := middlewares.NewAuthMiddleware(jwt, cfg.App.Name)

@@ -9,97 +9,97 @@ import (
 )
 
 type Config struct {
-	App
-	Auth
-	OAuth
-	Server
-	Client
-	Database
-	Cache
-	Tracer
+	App      `mapstructure:"app"`
+	Auth     `mapstructure:"auth"`
+	OAuth    `mapstructure:"oauth"`
+	Server   `mapstructure:"server"`
+	Client   `mapstructure:"client"`
+	Database `mapstructure:"database"`
+	Cache    `mapstructure:"cache"`
+	Tracer   `mapstructure:"tracer"`
 }
 
 type App struct {
-	Name string
-	Env  string
+	Name string `mapstructure:"name"`
+	Env  string `mapstructure:"env"`
 }
 
 type Auth struct {
 	BCrypt struct {
-		Cost int
-	}
+		Cost int `mapstructure:"cost"`
+	} `mapstructure:"bcrypt"`
 
 	JWT struct {
-		Issuer    string
-		Audiences []string
-		Secret    string
-		Duration  time.Duration
-	}
+		Issuer    string        `mapstructure:"issuer"`
+		Audiences []string      `mapstructure:"audiences"`
+		Secret    string        `mapstructure:"secret"`
+		Duration  time.Duration `mapstructure:"duration"`
+	} `mapstructure:"jwt"`
 
 	TokenDuration struct {
-		Session      time.Duration
-		Reset        time.Duration
-		Verification time.Duration
-		EmailChange  time.Duration
-	}
+		Session      time.Duration `mapstructure:"session"`
+		Reset        time.Duration `mapstructure:"reset"`
+		Verification time.Duration `mapstructure:"verification"`
+		EmailChange  time.Duration `mapstructure:"email_change"`
+	} `mapstructure:"token_duration"`
 }
 
 type OAuth struct {
 	Google struct {
-		ClientID    string
-		Secret      string
-		RedirectURL string
-	}
+		ClientID    string `mapstructure:"client_id"`
+		Secret      string `mapstructure:"secret"`
+		RedirectURL string `mapstructure:"redirect_url"`
+	} `mapstructure:"google"`
 
 	Microsoft struct {
-		ClientID    string
-		Secret      string
-		RedirectURL string
-	}
+		ClientID    string `mapstructure:"client_id"`
+		Secret      string `mapstructure:"secret"`
+		RedirectURL string `mapstructure:"redirect_url"`
+	} `mapstructure:"microsoft"`
 
 	Duration struct {
-		CodeExchange time.Duration
-	}
+		CodeExchange time.Duration `mapstructure:"code_exchange"`
+	} `mapstructure:"duration"`
 }
 
 type Server struct {
-	Host string
-	Port int
+	Host string `mapstructure:"host"`
+	Port int    `mapstructure:"port"`
 
 	Timeout struct {
-		Read     time.Duration
-		Write    time.Duration
-		Shutdown time.Duration
-	}
+		Read     time.Duration `mapstructure:"read"`
+		Write    time.Duration `mapstructure:"write"`
+		Shutdown time.Duration `mapstructure:"shutdown"`
+	} `mapstructure:"timeout"`
 }
 
 type Client struct {
-	BaseURL string
+	BaseURL string `mapstructure:"base_url"`
 }
 
 type Database struct {
-	Host            string
-	Port            int
-	User            string
-	Pass            string
-	Name            string
-	SSLMode         string
+	Host            string `mapstructure:"host"`
+	Port            int    `mapstructure:"port"`
+	User            string `mapstructure:"user"`
+	Pass            string `mapstructure:"pass"`
+	Name            string `mapstructure:"name"`
+	SSLMode         string `mapstructure:"ssl_mode"`
 	DSN             string
-	MaxOpenConns    int
-	MaxIdleConns    int
-	ConnMaxLifetime time.Duration
+	MaxOpenConns    int           `mapstructure:"max_open_conns"`
+	MaxIdleConns    int           `mapstructure:"max_idle_conns"`
+	ConnMaxLifetime time.Duration `mapstructure:"conn_max_lifetime"`
 }
 
 type Cache struct {
-	Host       string
-	Port       int
-	Pass       string
-	MaxRetries int
-	BaseDelay  int
+	Host       string `mapstructure:"host"`
+	Port       int    `mapstructure:"port"`
+	Pass       string `mapstructure:"pass"`
+	MaxRetries int    `mapstructure:"max_retries"`
+	BaseDelay  int    `mapstructure:"base_delay"`
 }
 
 type Tracer struct {
-	Endpoint string
+	Endpoint string `mapstructure:"endpoint"`
 }
 
 func Load(path string) (*Config, error) {
@@ -117,7 +117,7 @@ func Load(path string) (*Config, error) {
 	}
 
 	var cfg Config
-	if err := v.Unmarshal(&cfg); err != nil {
+	if err := v.UnmarshalExact(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
