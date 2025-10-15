@@ -3,18 +3,21 @@ package entities
 import "time"
 
 type Auth struct {
-	ID          int64
-	Email       string
-	Password    *string
-	IsVerified  bool
-	LockedUntil *time.Time
-	Role        int16
+	ID                int64
+	Email             string
+	Password          *string
+	RoleID            int16
+	IsVerified        bool
+	EmailChangedAt    *time.Time
+	PasswordChangedAt *time.Time
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
-type NewAuth struct {
+type CreateAuth struct {
 	Email    string
-	Password string
-	Role     int16
+	Password *string
+	RoleID   int16
 }
 
 type GetAuth struct {

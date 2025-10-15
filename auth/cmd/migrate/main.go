@@ -5,36 +5,41 @@ import (
 	"log"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/ritchieridanko/apotekly-api/auth/config"
-	"github.com/ritchieridanko/apotekly-api/auth/database"
-	"github.com/ritchieridanko/apotekly-api/auth/internal/infras/postgresql"
+	"github.com/ritchieridanko/apotekly-api/auth/configs"
+	"github.com/ritchieridanko/apotekly-api/auth/internal/infrastructure/database"
 )
 
 func main() {
-	// define CLI flags
 	up := flag.Bool("up", false, "Run all migrations up")
 	down := flag.Int("down", 0, "Rollback N migrations down")
 	flag.Parse()
 
-	// load .env
-	config.Initialize()
-
-	// connect to DB
-	db, err := postgresql.Connect()
+	cfg, err := configs.Load("./configs")
 	if err != nil {
-		log.Fatalln("FATAL -> failed to connect to database:", err.Error())
+		log.Fatalln("FATAL -> ", err.Error())
+	}
+
+	db, err := database.NewConnection(&cfg.Database)
+	if err != nil {
+		log.Fatalln("FATAL -> ", err.Error())
 	}
 	defer db.Close()
 
+	migrator, err := database.NewMigrator(db, "migrations", cfg.Database.Name)
+	if err != nil {
+		log.Fatalln("FATAL -> ", err.Error())
+	}
+	defer migrator.Close()
+
 	if *up {
-		if err := database.RunMigrations(db); err != nil {
-			log.Fatalln("FATAL -> failed to apply migrations:", err.Error())
+		if err := migrator.Up(); err != nil {
+			log.Fatalln("FATAL -> ", err.Error())
 		}
 	} else if *down >= 0 {
-		if err := database.RollbackMigrations(db, *down); err != nil {
-			log.Fatalln("FATAL -> failed to rollback migrations:", err.Error())
+		if err := migrator.Down(*down); err != nil {
+			log.Fatalln("FATAL -> ", err.Error())
 		}
 	} else {
-		log.Println("WARNING -> no action specified (use -up, -down, or -down N)")
+		log.Fatalln("FATAL -> failed to run migrations: no action specified (use -up, -down, or -down N)")
 	}
 }

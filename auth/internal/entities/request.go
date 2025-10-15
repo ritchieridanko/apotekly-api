@@ -1,6 +1,6 @@
 package entities
 
-type NewRequest struct {
+type Request struct {
 	UserAgent string
 	IPAddress string
 }

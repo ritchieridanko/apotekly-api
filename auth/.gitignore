@@ -1,7 +1,9 @@
 .env
 
+config.yaml
+
 # Binaries
-/auth/cmd/server/server
+/auth/cmd/app/app
 /auth/cmd/migrate/migrate
 
 # IDE/editor files

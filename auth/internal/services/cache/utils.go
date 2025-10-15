@@ -6,14 +6,14 @@ import (
 	"time"
 )
 
-func isRetryable(err error) (isRetryable bool) {
+func isRetryable(err error) bool {
 	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 		return false
 	}
 	return true
 }
 
-func backoffWait(ctx context.Context, baseDelay, attempt int) (err error) {
+func backoffWait(ctx context.Context, baseDelay, attempt int) error {
 	backoff := time.Duration(baseDelay) * (1 << attempt)
 	select {
 	case <-ctx.Done():

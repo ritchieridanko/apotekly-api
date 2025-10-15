@@ -1,0 +1,63 @@
+app:
+  name: "auth-service"
+  env: "development" # or "production"
+
+auth:
+  bcrypt:
+    cost: 10 # adjust as needed
+  jwt:
+    issuer: "auth-service"
+    audiences:
+      - "auth-service"
+      - "user-service"
+    secret: "${JWT_SECRET}"
+    duration: 10m # adjust as needed
+  token_duration:
+    session: 1440m # adjust as needed
+    reset: 1440m # adjust as needed
+    verification: 1440m # adjust as needed
+    email_change: 1440m # adjust as needed
+
+oauth:
+  google:
+    client_id: "${GOOGLE_CLIENT_ID}"
+    secret: "${GOOGLE_CLIENT_SECRET}"
+    redirect_url: "${GOOGLE_REDIRECT_URL}"
+  microsoft:
+    client_id: "${MICROSOFT_CLIENT_ID}"
+    secret: "${MICROSOFT_CLIENT_SECRET}"
+    redirect_url: "${MICROSOFT_REDIRECT_URL}"
+  duration:
+    code_exchange: 5m # adjust as needed
+
+server:
+  host: "localhost"
+  port: 9000
+  timeout:
+    read: 5s # adjust as needed
+    write: 5s # adjust as needed
+    shutdown: 10s # adjust as needed
+
+client:
+  base_url: "${CLIENT_BASE_URL}"
+
+database:
+  host: "localhost"
+  port: 5432
+  user: "${DATABASE_USER}"
+  pass: "${DATABASE_PASS}"
+  name: "apotekly_auth_db"
+  ssl_mode: "disable"
+  max_open_conns: 25 # adjust as needed
+  max_idle_conns: 5 # adjust as needed
+  conn_max_lifetime: 5m # adjust as needed
+
+cache:
+  host: "localhost"
+  port: 6379
+  pass: "${CACHE_PASS}"
+  max_retries: 3 # adjust as needed
+  base_delay: 100 # adjust as needed
+
+tracer:
+  endpoint: "localhost:4318"
