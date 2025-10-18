@@ -81,8 +81,17 @@ func (u *authUsecase) Register(ctx context.Context, data *entities.CreateAuth, r
 			return err
 		}
 		if exists {
-			err := fmt.Errorf("failed to register: %w", errors.New("email conflict"))
-			return ce.NewError(span, ce.CodeAuthEmailConflict, "Email is already registered", err)
+			err := fmt.Errorf("failed to register: %w", ce.ErrEmailConflict)
+			return ce.NewError(span, ce.CodeAuthEmailConflict, ce.MsgEmailAlreadyRegistered, err)
+		}
+
+		exists, err = u.ac.IsEmailReserved(ctx, normalizedEmail)
+		if err != nil {
+			return err
+		}
+		if exists {
+			err := fmt.Errorf("failed to register: %w", ce.ErrEmailConflict)
+			return ce.NewError(span, ce.CodeAuthEmailConflict, ce.MsgEmailAlreadyRegistered, err)
 		}
 
 		hashedPassword, err := u.bcrypt.Hash(*data.Password)
@@ -219,8 +228,17 @@ func (u *authUsecase) ChangeEmail(ctx context.Context, authID int64, email strin
 		return "", err
 	}
 	if exists {
-		err := fmt.Errorf("failed to change email: %w", errors.New("email conflict"))
-		return "", ce.NewError(span, ce.CodeAuthEmailConflict, "Email is already registered", err)
+		err := fmt.Errorf("failed to change email: %w", ce.ErrEmailConflict)
+		return "", ce.NewError(span, ce.CodeAuthEmailConflict, ce.MsgEmailAlreadyRegistered, err)
+	}
+
+	exists, err = u.ac.IsEmailReserved(ctx, normalizedEmail)
+	if err != nil {
+		return "", err
+	}
+	if exists {
+		err := fmt.Errorf("failed to change email: %w", ce.ErrEmailConflict)
+		return "", ce.NewError(span, ce.CodeAuthEmailConflict, ce.MsgEmailAlreadyRegistered, err)
 	}
 
 	token := utils.NewUUID().String()
@@ -464,7 +482,15 @@ func (u *authUsecase) IsEmailRegistered(ctx context.Context, email string) (bool
 	defer span.End()
 
 	normalizedEmail := utils.Normalize(email)
-	return u.ar.Exists(ctx, normalizedEmail)
+	exists, err := u.ar.Exists(ctx, normalizedEmail)
+	if err != nil {
+		return false, err
+	}
+	if !exists {
+		return u.ac.IsEmailReserved(ctx, normalizedEmail)
+	}
+
+	return true, nil
 }
 
 func (u *authUsecase) IsResetTokenValid(ctx context.Context, token string) (bool, error) {

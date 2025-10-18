@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -37,6 +38,16 @@ func (c *Cache) Evaluate(ctx context.Context, hashKey, script string, keys []str
 		result, err := c.cache.EvalSha(ctx, hash, keys, args...).Result()
 		if err == nil {
 			return result, nil
+		}
+
+		if strings.Contains(err.Error(), "NOSCRIPT") {
+			hash, err := c.loadScript(ctx, script)
+			if err != nil {
+				return nil, err
+			}
+			if err := c.Set(ctx, hashKey, hash, -1); err != nil {
+				return nil, err
+			}
 		}
 
 		lastErr = err
@@ -75,6 +86,33 @@ func (c *Cache) Set(ctx context.Context, key string, value interface{}, duration
 	}
 
 	return lastErr
+}
+
+func (c *Cache) SetNX(ctx context.Context, key string, value interface{}, duration time.Duration) (bool, error) {
+	var lastErr error
+	for attempt := 0; attempt <= c.maxRetries; attempt++ {
+		var result bool
+		var err error
+		if duration <= 0 {
+			result, err = c.cache.SetNX(ctx, key, value, 0).Result()
+		} else {
+			result, err = c.cache.SetNX(ctx, key, value, duration).Result()
+		}
+
+		if err == nil {
+			return result, nil
+		}
+
+		lastErr = err
+		if !isRetryable(err) {
+			break
+		}
+		if err := backoffWait(ctx, c.baseDelay, attempt); err != nil {
+			return false, err
+		}
+	}
+
+	return false, lastErr
 }
 
 func (c *Cache) Get(ctx context.Context, key string) (string, error) {

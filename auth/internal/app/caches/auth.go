@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/ritchieridanko/apotekly-api/auth/internal/services/cache"
@@ -23,6 +24,7 @@ type AuthCache interface {
 	CreateEmailChangeToken(ctx context.Context, authID int64, newEmail, token string, duration time.Duration) (err error)
 	UseEmailChangeToken(ctx context.Context, token string) (authID int64, newEmail string, err error)
 	ResetTokenExists(ctx context.Context, token string) (exists bool, err error)
+	IsEmailReserved(ctx context.Context, email string) (exists bool, err error)
 }
 
 type authCache struct {
@@ -54,7 +56,7 @@ func (c *authCache) CreateResetToken(ctx context.Context, authID int64, token st
 	_, err := c.cache.Evaluate(
 		ctx, "hs:crt", script,
 		[]string{authKey, tokenKey, constants.CachePrefixReset},
-		token, authID, int(duration.Seconds()),
+		token, strconv.FormatInt(authID, 10), int(duration.Seconds()),
 	)
 	if err != nil {
 		wErr := fmt.Errorf("failed to create reset token: %w", err)
@@ -119,7 +121,7 @@ func (c *authCache) CreateVerificationToken(ctx context.Context, authID int64, t
 	_, err := c.cache.Evaluate(
 		ctx, "hs:cvt", script,
 		[]string{authKey, tokenKey, constants.CachePrefixVerification},
-		token, authID, int(duration.Seconds()),
+		token, strconv.FormatInt(authID, 10), int(duration.Seconds()),
 	)
 	if err != nil {
 		wErr := fmt.Errorf("failed to create verification token: %w", err)
@@ -169,6 +171,7 @@ func (c *authCache) CreateEmailChangeToken(ctx context.Context, authID int64, ne
 
 	authKey := fmt.Sprintf("%s:%d", constants.CachePrefixEmailChange, authID)
 	tokenKey := fmt.Sprintf("%s:%s", constants.CachePrefixEmailChange, token)
+	emailKey := fmt.Sprintf("%s:%s", constants.CachePrefixEmailReservation, newEmail)
 
 	// id: authID, ne: newEmail
 	script := `
@@ -177,20 +180,29 @@ func (c *authCache) CreateEmailChangeToken(ctx context.Context, authID int64, ne
 			redis.call("DEL", KEYS[1])
 			redis.call("DEL", KEYS[3] .. ":" .. token)
 		end
+		local reserved = redis.call("SET", KEYS[4], ARGV[2], "NX", "EX", ARGV[4])
+		if reserved == nil then
+			return 0
+		end
+		redis.call("EXPIRE", KEYS[4], ARGV[4])
 		redis.call("SET", KEYS[1], ARGV[1], "EX", ARGV[4])
 		redis.call("HSET", KEYS[2], "id", ARGV[2], "ne", ARGV[3])
 		redis.call("EXPIRE", KEYS[2], ARGV[4])
 		return 1
 	`
 
-	_, err := c.cache.Evaluate(
+	res, err := c.cache.Evaluate(
 		ctx, "hs:cect", script,
-		[]string{authKey, tokenKey, constants.CachePrefixEmailChange},
-		token, authID, newEmail, int(duration.Seconds()),
+		[]string{authKey, tokenKey, constants.CachePrefixEmailChange, emailKey},
+		token, strconv.FormatInt(authID, 10), newEmail, int(duration.Seconds()),
 	)
 	if err != nil {
 		wErr := fmt.Errorf("failed to create email change token: %w", err)
 		return ce.NewError(span, ce.CodeCacheScriptExecution, ce.MsgInternalServer, wErr)
+	}
+	if res.(int64) == 0 {
+		err := fmt.Errorf("failed to create email change token: %w", errors.New("email already reserved"))
+		return ce.NewError(span, ce.CodeAuthEmailConflict, "Email is already registered", err)
 	}
 
 	return nil
@@ -210,12 +222,16 @@ func (c *authCache) UseEmailChangeToken(ctx context.Context, token string) (int6
 			local email = data[2]
 			redis.call("DEL", KEYS[1])
 			redis.call("DEL", KEYS[2] .. ":" .. authID)
+			redis.call("DEL", KEYS[3] .. ":" .. email)
 			return {authID, email}
 		end
 		return nil
 	`
 
-	result, err := c.cache.Evaluate(ctx, "hs:uect", script, []string{tokenKey, constants.CachePrefixEmailChange})
+	result, err := c.cache.Evaluate(
+		ctx, "hs:uect", script,
+		[]string{tokenKey, constants.CachePrefixEmailChange, constants.CachePrefixEmailReservation},
+	)
 	if err != nil {
 		wErr := fmt.Errorf("failed to use email change token: %w", err)
 		if errors.Is(err, ce.ErrCacheNil) {
@@ -254,7 +270,22 @@ func (c *authCache) ResetTokenExists(ctx context.Context, token string) (bool, e
 
 	exists, err := c.cache.Exists(ctx, key)
 	if err != nil {
-		wErr := fmt.Errorf("failed to locate reset token: %w", err)
+		wErr := fmt.Errorf("failed to fetch reset token: %w", err)
+		return false, ce.NewError(span, ce.CodeCacheQueryExecution, ce.MsgInternalServer, wErr)
+	}
+
+	return exists, nil
+}
+
+func (c *authCache) IsEmailReserved(ctx context.Context, email string) (bool, error) {
+	ctx, span := otel.Tracer(authErrorTracer).Start(ctx, "IsEmailReserved")
+	defer span.End()
+
+	key := fmt.Sprintf("%s:%s", constants.CachePrefixEmailReservation, email)
+
+	exists, err := c.cache.Exists(ctx, key)
+	if err != nil {
+		wErr := fmt.Errorf("failed to fetch email: %w", err)
 		return false, ce.NewError(span, ce.CodeCacheQueryExecution, ce.MsgInternalServer, wErr)
 	}
 

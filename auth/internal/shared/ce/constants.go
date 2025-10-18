@@ -57,12 +57,13 @@ const (
 
 // external error messages (for end-users)
 const (
-	MsgInternalServer     string = "Internal server error"
-	MsgInvalidCredentials string = "Invalid credentials"
-	MsgInvalidParams      string = "Invalid params"
-	MsgInvalidPayload     string = "Invalid payload"
-	MsgInvalidToken       string = "Invalid token"
-	MsgUnauthenticated    string = "Unauthenticated"
+	MsgEmailAlreadyRegistered string = "Email is already registered"
+	MsgInternalServer         string = "Internal server error"
+	MsgInvalidCredentials     string = "Invalid credentials"
+	MsgInvalidParams          string = "Invalid params"
+	MsgInvalidPayload         string = "Invalid payload"
+	MsgInvalidToken           string = "Invalid token"
+	MsgUnauthenticated        string = "Unauthenticated"
 )
 
 // internal error logs
@@ -71,6 +72,7 @@ var (
 	ErrCookieNotFound      error = http.ErrNoCookie
 	ErrDBAffectNoRows      error = errors.New("query execution affected no rows")
 	ErrDBQueryNoRows       error = sql.ErrNoRows
+	ErrEmailConflict       error = errors.New("email conflict")
 	ErrInvalidTokenClaim   error = errors.New("invalid token claim")
 	ErrOAuthCodeNotFound   error = errors.New("oauth code not found")
 	ErrSessionExpired      error = errors.New("session expired")
