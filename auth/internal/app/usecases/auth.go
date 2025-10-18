@@ -285,6 +285,10 @@ func (u *authUsecase) ConfirmEmailChange(ctx context.Context, token, sessionToke
 		return nil
 	})
 
+	if err := u.ac.UnreserveEmail(ctx, newEmail); err != nil {
+		return nil, nil, err
+	}
+
 	return authToken, auth, err
 }
 
