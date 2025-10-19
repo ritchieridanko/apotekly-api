@@ -12,6 +12,7 @@ import (
 	"github.com/ritchieridanko/apotekly-api/auth/internal/services"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/services/cache"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/services/database"
+	"github.com/ritchieridanko/apotekly-api/auth/internal/services/logger"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/services/oauth"
 )
 
@@ -34,6 +35,7 @@ func NewContainer(cfg *configs.Config, infra *infrastructure.Infrastructure) *Co
 	jwt := services.NewJWTService(&cfg.Auth)
 	cookie := services.NewCookieService(cfg.App.Env, true)
 	oauth := oauth.Initialize(&cfg.OAuth)
+	logger := logger.NewLogger(infra.Logger())
 
 	su := usecases.NewSessionUsecase(sr, tx)
 	au := usecases.NewAuthUsecase(ar, ac, su, tx, bcrypt, jwt, cfg)
@@ -44,7 +46,7 @@ func NewContainer(cfg *configs.Config, infra *infrastructure.Infrastructure) *Co
 
 	am := middlewares.NewAuthMiddleware(jwt, cfg.App.Name)
 
-	r := router.NewRouter(am, ah, oah, cfg)
+	r := router.NewRouter(logger, am, ah, oah, cfg)
 
 	return &Container{router: r}
 }

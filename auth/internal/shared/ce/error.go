@@ -1,19 +1,16 @@
 package ce
 
 import (
-	"fmt"
 	"net/http"
-	"time"
 
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
 
 type Error struct {
-	Code      errCode
-	Message   string
-	Err       error
-	Timestamp time.Time
+	Code    errCode
+	Message string
+	Err     error
 }
 
 func NewError(span trace.Span, code errCode, message string, err error) *Error {
@@ -23,15 +20,14 @@ func NewError(span trace.Span, code errCode, message string, err error) *Error {
 	}
 
 	return &Error{
-		Code:      code,
-		Message:   message,
-		Err:       err,
-		Timestamp: time.Now().UTC(),
+		Code:    code,
+		Message: message,
+		Err:     err,
 	}
 }
 
 func (e *Error) Error() string {
-	return fmt.Sprintf("%s\t[%s]\t%v", e.Timestamp.Format("2006-01-02 15:04:05"), e.Code, e.Message)
+	return e.Err.Error()
 }
 
 func (e *Error) HTTPStatus() int {

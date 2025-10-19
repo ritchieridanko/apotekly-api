@@ -5,6 +5,7 @@ import (
 	"github.com/ritchieridanko/apotekly-api/auth/configs"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/interfaces/http/handlers"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/interfaces/http/middlewares"
+	"github.com/ritchieridanko/apotekly-api/auth/internal/services/logger"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
@@ -13,6 +14,7 @@ type Router struct {
 }
 
 func NewRouter(
+	l *logger.Logger,
 	am *middlewares.AuthMiddleware,
 	ah *handlers.AuthHandler,
 	oah *handlers.OAuthHandler,
@@ -21,9 +23,9 @@ func NewRouter(
 	r := gin.New()
 
 	r.Use(otelgin.Middleware(cfg.App.Name))
-	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
-	r.Use(middlewares.ErrorHandler())
+	r.Use(middlewares.Logger(l))
+	r.Use(middlewares.ErrorHandler(l))
 	r.Use(middlewares.CORS(cfg.Client.BaseURL))
 
 	r.ContextWithFallback = true
@@ -32,7 +34,7 @@ func NewRouter(
 		ctx.JSON(200, gin.H{"status": "ok"})
 	})
 
-	api := r.Group("/api/v1")
+	api := r.Group("/api/v1", middlewares.RequestID())
 
 	auth := newAuthRouter(ah, am)
 	auth.register(api.Group("/auth"))

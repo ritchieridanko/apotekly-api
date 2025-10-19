@@ -4,6 +4,7 @@ type ctxKey string
 
 const (
 	CtxKeyAuthID     ctxKey = "auth-id"
-	CtxKeyRoleID     ctxKey = "role-id"
 	CtxKeyIsVerified ctxKey = "is-verified"
+	CtxKeyRequestID  ctxKey = "request-id"
+	CtxKeyRoleID     ctxKey = "role-id"
 )
