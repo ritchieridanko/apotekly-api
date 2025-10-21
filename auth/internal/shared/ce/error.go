@@ -69,6 +69,7 @@ func (e *Error) HTTPStatus() int {
 		CodeDBTransaction,
 		CodeEmailDelivery,
 		CodeEmailTemplateParsing,
+		CodeEventPublishingFailed,
 		CodeJWTGenerationFailed,
 		CodeOAuthCodeExchangeFailed,
 		CodeOAuthGetUserInfoFailed,

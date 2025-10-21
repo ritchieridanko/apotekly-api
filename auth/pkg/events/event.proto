@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package events;
+
+option go_package = "github.com/ritchieridanko/apotekly-api/auth/pkg/events;events";
+
+message Event {
+  string event_id = 1;
+  string event_type = 2;
+  string source_service = 3;
+  int64 timestamp = 4;
+  bytes data = 5;
+}

@@ -17,25 +17,25 @@ import (
 func main() {
 	cfg, err := configs.Load("./configs")
 	if err != nil {
-		log.Fatalln("FATAL -> ", err.Error())
+		log.Fatalln("FATAL ->", err.Error())
 	}
 
 	infra, err := infrastructure.Initialize(cfg)
 	if err != nil {
-		log.Fatalln("FATAL -> ", err.Error())
+		log.Fatalln("FATAL ->", err.Error())
 	}
 	defer infra.Close()
 
 	c := di.NewContainer(cfg, infra)
 
 	if err := validator.RegisterValidators(); err != nil {
-		log.Fatalln("FATAL -> ", err.Error())
+		log.Fatalln("FATAL ->", err.Error())
 	}
 
 	s := servers.NewHTTPServer(cfg, c.Router().Engine())
 	go func() {
 		if err := s.Start(); err != nil {
-			log.Fatalln("FATAL -> ", err.Error())
+			log.Fatalln("FATAL ->", err.Error())
 		}
 	}()
 
@@ -48,6 +48,6 @@ func main() {
 	defer cancel()
 
 	if err := s.Shutdown(ctx); err != nil {
-		log.Println("FORCED TO SHUTDOWN -> ", err.Error())
+		log.Println("FORCED TO SHUTDOWN ->", err.Error())
 	}
 }

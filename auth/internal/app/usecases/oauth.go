@@ -128,7 +128,7 @@ func (u *oAuthUsecase) Authenticate(ctx context.Context, data *entities.OAuth, r
 			u.cfg.Auth.TokenDuration.Verification,
 		)
 		if err != nil {
-			log.Println("WARNING -> ", err.Error())
+			log.Println("WARNING ->", err.Error())
 			return sessionToken, exchangeCode, nil
 		}
 

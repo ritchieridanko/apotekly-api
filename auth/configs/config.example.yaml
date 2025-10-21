@@ -61,3 +61,9 @@ cache:
 
 tracer:
   endpoint: "localhost:4318"
+
+broker:
+  brokers:
+    - "localhost:9092"
+  timeout:
+    batch: 10ms # adjust as needed

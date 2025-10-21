@@ -17,6 +17,7 @@ type Config struct {
 	Database `mapstructure:"database"`
 	Cache    `mapstructure:"cache"`
 	Tracer   `mapstructure:"tracer"`
+	Broker   `mapstructure:"broker"`
 }
 
 type App struct {
@@ -100,6 +101,14 @@ type Cache struct {
 
 type Tracer struct {
 	Endpoint string `mapstructure:"endpoint"`
+}
+
+type Broker struct {
+	Brokers []string `mapstructure:"brokers"`
+
+	Timeout struct {
+		Batch time.Duration `mapstructure:"batch"`
+	} `mapstructure:"timeout"`
 }
 
 func Load(path string) (*Config, error) {

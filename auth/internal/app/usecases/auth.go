@@ -9,6 +9,7 @@ import (
 
 	"github.com/ritchieridanko/apotekly-api/auth/configs"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/app/caches"
+	"github.com/ritchieridanko/apotekly-api/auth/internal/app/publishers"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/app/repositories"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/entities"
 	"github.com/ritchieridanko/apotekly-api/auth/internal/services"
@@ -48,6 +49,7 @@ type authUsecase struct {
 	ar         repositories.AuthRepository
 	ac         caches.AuthCache
 	su         SessionUsecase
+	aep        publishers.AuthEventPublisher
 	transactor *database.Transactor
 	bcrypt     *services.BCryptService
 	jwt        *services.JWTService
@@ -58,12 +60,13 @@ func NewAuthUsecase(
 	ar repositories.AuthRepository,
 	ac caches.AuthCache,
 	su SessionUsecase,
+	aep publishers.AuthEventPublisher,
 	transactor *database.Transactor,
 	bcrypt *services.BCryptService,
 	jwt *services.JWTService,
 	cfg *configs.Config,
 ) AuthUsecase {
-	return &authUsecase{ar, ac, su, transactor, bcrypt, jwt, cfg}
+	return &authUsecase{ar, ac, su, aep, transactor, bcrypt, jwt, cfg}
 }
 
 func (u *authUsecase) Register(ctx context.Context, data *entities.CreateAuth, request *entities.Request) (*entities.AuthToken, *entities.Auth, error) {
@@ -145,11 +148,13 @@ func (u *authUsecase) Register(ctx context.Context, data *entities.CreateAuth, r
 		u.cfg.Auth.TokenDuration.Verification,
 	)
 	if err != nil {
-		log.Println("WARNING -> ", err.Error())
+		log.Println("WARNING ->", err.Error())
 		return &authToken, auth, nil
 	}
 
-	// TODO (1)
+	if err := u.aep.PublishAuthRegistered(ctx, auth.ID, auth.Email, verificationToken); err != nil {
+		log.Println("WARNING ->", err.Error())
+	}
 
 	return &authToken, auth, nil
 }

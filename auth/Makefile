@@ -2,6 +2,10 @@
 BINARY_DIR := bin
 APP_BIN := $(BINARY_DIR)/app
 MIGRATE_BIN := $(BINARY_DIR)/migrate
+PROTOC := protoc
+PROTO_DIR := pkg/events
+PROTOC_GEN_GO := $(shell which protoc-gen-go)
+PROTOC_GEN_GO_GRPC := $(shell which protoc-gen-go-grpc)
 
 # === Default Target ===
 help:
@@ -12,6 +16,8 @@ help:
 	@echo "  make run-app				Run the app"
 	@echo "  make build-app			Build the app binary into $(APP_BIN)"
 	@echo "  make build-and-run-app		Build and run the app binary"
+	@echo "  make build-proto			Build the protobuf files"
+	@echo "  make clean-proto			Clean the .pb.go files"
 	@echo "  make setup-db				Create the database"
 	@echo "  make drop-db				Drop the database"
 	@echo "  make migrate-up			Apply all migrations"
@@ -22,14 +28,26 @@ help:
 
 # === App Commands ===
 run-app:
+	make build-proto
 	go run cmd/app/main.go
 
 build-app:
+	make build-proto
 	go build -o $(APP_BIN) cmd/app/main.go
 
 build-and-run-app:
 	make build-app
 	./$(APP_BIN)
+
+# === Proto Commands ===
+build-proto:
+	make clean-proto
+	$(PROTOC) \
+	--go_out=. --go_opt=paths=source_relative \
+	$(PROTO_DIR)/*.proto; \
+
+clean-proto:
+	@find $(PROTO_DIR) -name "*.pb.go" -type f -delete
 
 # === DB Commands ===
 setup-db:

@@ -35,6 +35,7 @@ const (
 	CodeDBTransaction           errCode = "DB_TRANSACTION_ERROR"
 	CodeEmailDelivery           errCode = "EMAIL_DELIVERY_ERROR"
 	CodeEmailTemplateParsing    errCode = "EMAIL_TEMPLATE_PARSING_ERROR"
+	CodeEventPublishingFailed   errCode = "EVENT_PUBLISHING_FAILED_ERROR"
 	CodeInvalidParams           errCode = "INVALID_PARAMS_ERROR"
 	CodeInvalidPayload          errCode = "INVALID_PAYLOAD_ERROR"
 	CodeInvalidTokenClaim       errCode = "INVALID_TOKEN_CLAIM_ERROR"
