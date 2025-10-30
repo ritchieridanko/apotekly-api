@@ -104,7 +104,7 @@ type Tracer struct {
 }
 
 type Broker struct {
-	Brokers []string `mapstructure:"brokers"`
+	Brokers string `mapstructure:"brokers"`
 
 	Timeout struct {
 		Batch time.Duration `mapstructure:"batch"`
@@ -118,12 +118,14 @@ func Load(path string) (*Config, error) {
 	v.SetConfigType("yaml")
 	v.AddConfigPath(path)
 
-	v.AutomaticEnv()
-	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-
+	// read YAML config
 	if err := v.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
+
+	// load env variables
+	v.AutomaticEnv()
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
 	var cfg Config
 	if err := v.UnmarshalExact(&cfg); err != nil {

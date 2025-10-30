@@ -1,0 +1,68 @@
+app:
+  name: "auth-service"
+  env: "development"
+
+auth:
+  bcrypt:
+    cost: 10
+  jwt:
+    issuer: "auth-service"
+    audiences:
+      - "auth-service"
+      - "user-service"
+    secret: ""
+    duration: "10m"
+  token_duration:
+    session: "24h"
+    reset: "24h"
+    verification: "24h"
+    email_change: "24h"
+
+oauth:
+  google:
+    client_id: ""
+    secret: ""
+    redirect_url: ""
+  microsoft:
+    client_id: ""
+    secret: ""
+    redirect_url: ""
+  duration:
+    code_exchange: "5m"
+
+server:
+  host: "0.0.0.0"
+  port: 9000
+  timeout:
+    read: "5s"
+    write: "5s"
+    shutdown: "10s"
+
+client:
+  base_url: "http://localhost:3000"
+
+database:
+  host: "localhost"
+  port: 5432
+  user: ""
+  pass: ""
+  name: "apotekly_auth_db"
+  ssl_mode: "disable"
+  max_open_conns: 25
+  max_idle_conns: 5
+  conn_max_lifetime: "5m"
+
+cache:
+  host: "localhost"
+  port: 6379
+  pass: ""
+  max_retries: 3
+  base_delay: 100
+
+tracer:
+  endpoint: "localhost:4318"
+
+broker:
+  brokers: "localhost:9092"
+  timeout:
+    batch: "10ms"

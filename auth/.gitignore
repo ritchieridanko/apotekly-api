@@ -1,7 +1,5 @@
 .env
 
-config.yaml
-
 # Binaries
 /auth/cmd/app/app
 /auth/cmd/migrate/migrate

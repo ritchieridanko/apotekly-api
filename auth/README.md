@@ -13,32 +13,47 @@ The **Auth Service** is responsible for handling authentication and authorizatio
 
 ```bash
 auth/
-├── cmd/             # Application entrypoints
-│  ├── migrate/      # DB migration application
-│  └── server/       # Main server application
-├── config/          # Configuration management
-├── database/        # DB migrations and seedings
-│  └── migrations/   # SQL migration files
-└── internal/        # Private application code
-   ├── ce/           # Custom error handlers
-   ├── constants/    # Application constants
-   ├── di/           # Dependency injection container
-   ├── dto/          # Data transfer objects
-   ├── entities/     # Domain entities
-   ├── handlers/     # HTTP request handlers
-   ├── infras/       # Infrastructure initializations
-   ├── middlewares/  # HTTP middlewares
-   ├── repos/        # Data access layer
-   ├── routers/      # Route definitions
-   ├── server/       # Server setup and configuration
-   ├── services/     # Business logic services
-   │  ├── cache/     # Caching service layer
-   │  ├── db/        # DB service layer
-   │  ├── email/     # Email service with templates
-   │  └── oauth/     # OAuth provider integrations
-   ├── usecases/     # Usecase implementations
-   ├── utils/        # Utility functions
-   └── validators/   # Custom validation rules
+├── cmd/
+│  ├── app/
+│  └── migrate/
+├── configs/
+├── internal/
+│  ├── app/
+│  │  ├── caches/
+│  │  ├── publishers/
+│  │  ├── repositories/
+│  │  └── usecases/
+│  ├── entities/
+│  ├── infrastructure/
+│  │  ├── broker/
+│  │  ├── cache/
+│  │  ├── database/
+│  │  ├── logger/
+│  │  └── tracer/
+│  ├── interfaces/
+│  │  ├── di/
+│  │  └── http/
+│  │     ├── dto/
+│  │     ├── handlers/
+│  │     ├── middlewares/
+│  │     ├── router/
+│  │     └── validator/
+│  ├── servers/
+│  ├── services/
+│  │  ├── broker/
+│  │  ├── cache/
+│  │  ├── database/
+│  │  ├── logger/
+│  │  └── oauth/
+│  │     ├── google/
+│  │     └── microsoft/
+│  └── shared/
+│     ├── ce/
+│     ├── constants/
+│     └── utils/
+├── migrations/
+├── pkg/
+│  └── events/
 ```
 
 ## 🚀 Running the Service
@@ -50,37 +65,42 @@ auth/
    # Edit .env with your configuration
    ```
 
-2. **Start Dependencies**
-
-   Make sure you have PostgreSQL and Redis installed on your device. If not, follow the installation guidelines below:
-
-   - `PostgreSQL`: https://www.postgresql.org/download/
-   - `Redis`: https://redis.io/docs/latest/operate/oss_and_stack/install/archive/install-redis/
-
-   Alternatively, if you have Docker on your device, you can install these dependencies from your Docker. Here's how to install the dependencies with Docker:
+2. **Run the Service**
 
    ```bash
-   docker run -d --name apotekly-postgres \
-      -e POSTGRES_USER=postgres \
-      -e POSTGRES_PASSWORD=postgres \
-      -p 5432:5432 postgres:15
-
-   docker run -d --name apotekly-redis \
-      -p 6379:6379 redis:latest
+   # This service depends on redis, kafka, and jaeger containers running, and its kafka topics registered.
    ```
 
-3. **Run the Service**
-
-   You can run the service in development mode
+   Build the docker images of the service and its dependencies
 
    ```bash
-   make dev-up
+   make docker-build
    ```
 
-   Or, you can build and run the service
+   Run the docker containers
 
    ```bash
-   make build-and-run
+   make docker-up
+   ```
+
+   Apply database migrations
+
+   ```bash
+   make docker-migrate-up
+   ```
+
+3. **Stop the Service**
+
+   Rollback database migrations
+
+   ```bash
+   make docker-migrate-down
+   ```
+
+   Stop the docker containers
+
+   ```bash
+   make docker-down
    ```
 
 ## 📖 API Endpoints

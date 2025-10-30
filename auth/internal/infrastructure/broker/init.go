@@ -1,6 +1,8 @@
 package broker
 
 import (
+	"strings"
+
 	"github.com/ritchieridanko/apotekly-api/auth/configs"
 	"github.com/segmentio/kafka-go"
 )
@@ -10,8 +12,10 @@ type Broker struct {
 }
 
 func NewClient(cfg *configs.Broker) *Broker {
+	brokers := strings.Split(cfg.Brokers, ",")
+
 	p := kafka.Writer{
-		Addr:         kafka.TCP(cfg.Brokers...),
+		Addr:         kafka.TCP(brokers...),
 		Balancer:     &kafka.Hash{},
 		RequiredAcks: kafka.RequireAll,
 		Async:        false,

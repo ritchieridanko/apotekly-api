@@ -1,0 +1,74 @@
+services:
+  # ---------- Auth Service ----------
+  auth:
+    image: apotekly-auth
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: auth-service
+    networks:
+      - apotekly_net
+    restart: unless-stopped
+    env_file:
+      - ../.env
+      - .env
+    environment:
+      - DATABASE_HOST=auth-postgres
+    ports:
+      - "${SERVER_PORT}:${SERVER_PORT}"
+    depends_on:
+      auth-postgres:
+        condition: service_healthy
+      auth-migrate:
+        condition: service_completed_successfully
+
+  # ---------- Postgres ----------
+  auth-postgres:
+    image: postgres:16-alpine
+    container_name: auth-postgres
+    networks:
+      - apotekly_net
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_USER=${DATABASE_USER}
+      - POSTGRES_PASSWORD=${DATABASE_PASS}
+      - POSTGRES_DB=${DATABASE_NAME}
+    ports:
+      - "${DATABASE_PORT}:${DATABASE_PORT}"
+    volumes:
+      - auth_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER} -d ${DATABASE_NAME}"]
+      interval: 5s
+      retries: 5
+ 
+  # ---------- Migration ----------
+  auth-migrate:
+    image: apotekly-auth-migrate
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: auth-migrate
+    networks:
+      - apotekly_net
+    restart: "no"
+    env_file:
+      - ../.env
+      - .env
+    environment:
+      - DATABASE_HOST=auth-postgres
+    depends_on:
+      auth-postgres:
+        condition: service_healthy
+    # volumes:
+    #  - ./migrations:/root/migrations
+    entrypoint: ["./bin/migrate"]
+
+networks:
+  apotekly_net:
+    external: true
+
+volumes:
+  auth_pg_data:
